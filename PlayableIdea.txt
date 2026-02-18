@@ -1,0 +1,155 @@
+Playable Ad Generator — Initial Specification Document
+Overview
+A locally-run AI-powered tool that generates HTML5 playable ads for mobile game marketing. The tool accepts reference images and configuration inputs, and outputs self-contained HTML5 builds compliant with AppLovin's playable ad format requirements, alongside structured JSON files describing the ad's parameters.
+The agent is powered by the Anthropic Claude API (authenticated via the user's Anthropic OAuth credentials).
+
+Goals
+
+Allow a non-technical creative employee to generate playable ads by writing a prompt, importing JSON config files, and uploading reference images
+Generate valid, AppLovin-compliant HTML5 playable ad builds
+Export structured JSON files capturing mechanics, level design, and trigger configuration — which can be reused, mixed, and imported into future generations
+Start with a simplified Solitaire genre (Disney Solitaire / Solitaire Grand Harvest style), with architecture designed to support additional mobile game genres in the future
+
+
+Interface & Runtime
+
+The tool runs locally on the user's desktop machine
+It launches a local server and opens in the default browser
+The output is a WebGL-compatible HTML5 build (intended for playback inside AppLovin's ad network inside mobile games)
+Tech stack: Python backend (FastAPI or Flask) + browser-based frontend
+Authentication: Claude Anthropic API via the user's OAuth credentials
+
+
+AppLovin Format Constraints
+To be verified against AppLovin's latest documentation, but working assumptions:
+
+File size limit: 5MB max per build (to be confirmed — 500KB is a stricter limit seen in some networks, needs validation)
+End card required: A CTA (Call to Action) button must appear at the end of the playable
+Orientation: Portrait only
+Audio: Mute on start, no autoplay audio
+All assets must be self-contained within the single HTML file (base64 encoded images, inlined JS/CSS)
+
+
+Action item: Verify exact AppLovin file size limit before first build. The two known thresholds are 500KB (MAX network strict mode) and 5MB (standard).
+
+
+AI Agent Architecture
+The tool is built around a Claude-powered agent that:
+
+Receives a text prompt from the user describing the desired ad
+Receives reference images (visual style, layout, or both)
+Receives imported JSON configs (mechanics and/or level design)
+Generates a complete HTML5 playable ad build
+Exports two structured JSON files describing the output
+
+The agent should be designed modularly so that future game genres (puzzle, match-3, runner, etc.) can be added as additional "genre modules" without rewriting the core pipeline.
+
+Input Types
+1. Text Prompt
+A free-text description written by the creative employee. Can describe visual style, tone, difficulty, number of levels, CTA copy, etc.
+2. Reference Image(s)
+Uploaded from a local folder. Used to guide:
+
+Visual style (colors, art direction)
+Layout and composition
+
+Additionally, a reference folder path can be specified. Files inside that folder are used in order of their filename numbering (e.g., ref_01.png, ref_02.png). The numbering guides the prompt context — earlier images carry more weight or represent the primary reference.
+3. JSON Import (Mechanics Config)
+A previously exported JSON file describing core gameplay mechanics. Can be imported to lock in parameters without re-prompting. See JSON schema below.
+4. JSON Import (Level Design Config)
+A previously exported JSON file describing level structure and CTA triggers. Can be imported independently from the mechanics config.
+
+Output Structure
+Outputs are written to two separate folders:
+/outputs
+  /builds
+    /build_[timestamp]
+      index.html         ← self-contained playable ad
+  /configs
+    mechanics_[timestamp].json
+    levels_[timestamp].json
+
+JSON Schema — Mechanics Config
+Captures the core feel and behavior of the playable:
+json{
+  "mechanics_version": "1.0",
+  "genre": "solitaire_simplified",
+  "input_type": "tap",
+  "card_move_speed": "medium",
+  "animation_type": "slide",
+  "highlight_valid_moves": true,
+  "auto_complete_enabled": false,
+  "notes": "Free text field for any additional context"
+}
+Fields:
+
+input_type — tap / drag / both
+card_move_speed — slow / medium / fast
+animation_type — slide / flip / instant
+highlight_valid_moves — boolean
+auto_complete_enabled — boolean
+notes — optional free text
+
+
+JSON Schema — Level Design Config
+Captures level structure, card layout, and exit triggers:
+json{
+  "levels_version": "1.0",
+  "genre": "solitaire_simplified",
+  "total_levels": 3,
+  "levels": [
+    {
+      "level_id": 1,
+      "layout": {
+        "open_cards": ["7H", "3S", "KD"],
+        "closed_cards": ["AS", "9C", "2H"],
+        "stack_structure": "linear"
+      },
+      "exit_triggers": [
+        {
+          "trigger_type": "level_complete",
+          "target_url": "https://yourapp.link/download",
+          "cta_text": "Play Now!"
+        },
+        {
+          "trigger_type": "fail_state",
+          "target_url": "https://yourapp.link/download",
+          "cta_text": "Try the Full Game"
+        }
+      ]
+    }
+  ]
+}
+Notes:
+
+Cards are represented as value + suit shorthand: 7H = 7 of Hearts, KD = King of Diamonds, AS = Ace of Spades, etc.
+stack_structure describes the visual layout of the card pile (for future expansion: pyramid, tableau, etc.)
+Each level can have its own exit triggers with independent URLs and CTA copy
+
+
+Solitaire Genre Rules (Simplified — Disney / Grand Harvest Style)
+This is the first supported genre. Rules:
+
+One card is always face-up and playable at a time
+A card can be placed on the open card if its value is one higher or one lower, regardless of suit or color
+Ace can go on both 2 and King (wraps around)
+King can go on both Queen and Ace
+No color matching required
+Goal: clear all cards from the layout before running out of moves
+Losing condition: no valid moves remain and the draw pile is empty
+
+
+User Workflow
+A typical creative session looks like this:
+
+Launch the tool locally (python app.py or similar)
+Opens in the browser
+User writes a prompt (or loads a previous one)
+User optionally imports a Mechanics JSON and/or Level Design JSON
+User optionally sets a reference folder path or uploads individual images
+User clicks Generate
+Agent calls Claude API, generates HTML5 build
+Build is saved to /outputs/builds/build_[timestamp]/index.html
+Two JSON config files are saved to /outputs/configs/
+A preview of the build is shown in-browser
+User can iterate — edit the prompt, swap JSON configs, re-generate

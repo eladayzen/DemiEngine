@@ -1,0 +1,15 @@
+{
+  "visual_version": "1.0",
+  "background_color": "#1a472a",
+  "table_felt_color": "#15803d",
+  "card_face_color": "#ffffff",
+  "card_back_color": "#1a237e",
+  "card_back_pattern": "solid",
+  "card_border_color": "#333333",
+  "highlight_color": "#ffeb3b",
+  "button_color": "#ff5722",
+  "button_text_color": "#ffffff",
+  "primary_text_color": "#ffffff",
+  "font_family": "Arial, sans-serif",
+  "ui_theme": "classic"
+}

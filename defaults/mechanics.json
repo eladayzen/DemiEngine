@@ -1,0 +1,10 @@
+{
+  "mechanics_version": "1.0",
+  "genre": "solitaire_simplified",
+  "input_type": "tap",
+  "card_move_speed": "medium",
+  "animation_type": "slide",
+  "highlight_valid_moves": true,
+  "auto_complete_enabled": false,
+  "notes": ""
+}

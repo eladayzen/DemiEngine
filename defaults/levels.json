@@ -1,0 +1,69 @@
+{
+  "levels_version": "1.0",
+  "genre": "solitaire_simplified",
+  "testing_mode": false,
+  "total_levels": 2,
+  "target_url": "https://www.phantombeasts.studio/",
+  "cta_text": "Play Now!",
+  "levels": [
+    {
+      "level_id": 1,
+      "show_draw_pile": false,
+      "enter_animation": "shuffle_in",
+      "enter_duration_ms": 900,
+      "layout": {
+        "foundation_card": "2H",
+        "tableau": [
+          {"code": "3S", "face_up": true, "col": 0, "row": 0},
+          {"code": "4D", "face_up": true, "col": 1, "row": 0},
+          {"code": "5C", "face_up": true, "col": 2, "row": 0},
+          {"code": "6H", "face_up": true, "col": 3, "row": 0}
+        ],
+        "draw_pile": [],
+        "grid": {
+          "cell_width": 82,
+          "cell_height": 110,
+          "origin_x": 0.5,
+          "origin_y": 0.22
+        }
+      },
+      "timings": {
+        "win_screen_duration_ms": 2000,
+        "fail_screen_duration_ms": 2000,
+        "level_transition_duration_ms": 1000
+      }
+    },
+    {
+      "level_id": 2,
+      "show_draw_pile": false,
+      "enter_animation": "drop_down",
+      "enter_duration_ms": 1000,
+      "layout": {
+        "foundation_card": "7H",
+        "tableau": [
+          {"code": "6S",  "face_up": true,  "col": 0, "row": 0},
+          {"code": "7D",  "face_up": false, "col": 0, "row": 1},
+          {"code": "8C",  "face_up": false, "col": 0, "row": 2},
+          {"code": "9H",  "face_up": true,  "col": 1, "row": 0},
+          {"code": "AS",  "face_up": false, "col": 1, "row": 1},
+          {"code": "10D", "face_up": true,  "col": 2, "row": 0},
+          {"code": "KC",  "face_up": false, "col": 2, "row": 1},
+          {"code": "JH",  "face_up": true,  "col": 3, "row": 0},
+          {"code": "QS",  "face_up": false, "col": 3, "row": 1}
+        ],
+        "draw_pile": [],
+        "grid": {
+          "cell_width": 82,
+          "cell_height": 110,
+          "origin_x": 0.5,
+          "origin_y": 0.18
+        }
+      },
+      "timings": {
+        "win_screen_duration_ms": 2000,
+        "fail_screen_duration_ms": 2000,
+        "level_transition_duration_ms": 1000
+      }
+    }
+  ]
+}

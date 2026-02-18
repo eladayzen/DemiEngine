@@ -1,0 +1,14 @@
+{
+  "seed_version": "1.0",
+  "created_at": "",
+  "seeds": {
+    "mechanics": null,
+    "levels": null,
+    "visual": null
+  },
+  "variation_amounts": {
+    "mechanics": 0.3,
+    "levels": 0.3,
+    "visual": 0.3
+  }
+}

@@ -1,0 +1,981 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Playable Ad Generator</title>
+  <style>
+    /* ── Reset & base ──────────────────────────────────────────── */
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+    :root {
+      --bg:        #12121e;
+      --surface:   #1c1c2e;
+      --card:      #24243a;
+      --border:    #35355a;
+      --accent:    #ff5722;
+      --accent2:   #ff7043;
+      --text:      #e0e0f0;
+      --muted:     #8888aa;
+      --green:     #4caf50;
+      --radius:    10px;
+    }
+    html, body { height: 100%; background: var(--bg); color: var(--text);
+      font-family: 'Segoe UI', Arial, sans-serif; font-size: 14px; }
+
+    /* ── Layout ────────────────────────────────────────────────── */
+    body { display: flex; flex-direction: column; }
+    header { background: var(--surface); border-bottom: 1px solid var(--border);
+      padding: 14px 24px; display: flex; align-items: center; gap: 16px; flex-shrink: 0; }
+    header h1 { font-size: 20px; color: var(--accent); font-weight: 700; letter-spacing: 0.5px; }
+    header span { color: var(--muted); font-size: 13px; }
+
+    .main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+
+    /* ── Tabs ──────────────────────────────────────────────────── */
+    .tabs { display: flex; gap: 4px; padding: 12px 20px 0;
+      background: var(--surface); border-bottom: 1px solid var(--border); flex-shrink: 0; }
+    .tab-btn { padding: 8px 22px; border: none; border-radius: var(--radius) var(--radius) 0 0;
+      background: var(--card); color: var(--muted); cursor: pointer; font-size: 13px;
+      font-weight: 600; transition: all 0.15s; border: 1px solid transparent;
+      border-bottom: none; }
+    .tab-btn:hover { color: var(--text); }
+    .tab-btn.active { background: var(--bg); color: var(--text);
+      border-color: var(--border); border-bottom-color: var(--bg); }
+
+    /* ── Tab content ───────────────────────────────────────────── */
+    .tab-content { flex: 1; overflow-y: auto; padding: 20px; display: none; }
+    .tab-content.active { display: block; }
+
+    /* ── Section card ──────────────────────────────────────────── */
+    .section-card { background: var(--card); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 20px; margin-bottom: 16px; }
+    .section-card h2 { font-size: 13px; text-transform: uppercase; letter-spacing: 1px;
+      color: var(--muted); margin-bottom: 16px; }
+
+    /* ── Form grid ─────────────────────────────────────────────── */
+    .form-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+      gap: 14px; }
+    .field { display: flex; flex-direction: column; gap: 5px; }
+    .field label { font-size: 12px; color: var(--muted); font-weight: 600;
+      text-transform: uppercase; letter-spacing: 0.5px; }
+    .field input[type="text"],
+    .field input[type="number"],
+    .field select,
+    .field textarea {
+      background: var(--surface); border: 1px solid var(--border); border-radius: 6px;
+      color: var(--text); padding: 7px 10px; font-size: 13px; font-family: inherit;
+      transition: border-color 0.15s; outline: none; }
+    .field input[type="text"]:focus,
+    .field input[type="number"]:focus,
+    .field select:focus,
+    .field textarea:focus { border-color: var(--accent); }
+    .field textarea { resize: vertical; min-height: 80px; font-family: 'Consolas', monospace;
+      font-size: 12px; line-height: 1.5; }
+    .field select option { background: var(--card); }
+
+    /* color picker row */
+    .color-row { display: flex; align-items: center; gap: 8px; }
+    .field input[type="color"] { width: 36px; height: 30px; border: 1px solid var(--border);
+      border-radius: 6px; background: none; cursor: pointer; padding: 2px; }
+    .color-hex { background: var(--surface); border: 1px solid var(--border);
+      border-radius: 6px; color: var(--text); padding: 5px 8px; font-size: 12px;
+      font-family: monospace; width: 80px; }
+
+    /* range slider */
+    .range-row { display: flex; align-items: center; gap: 8px; }
+    .range-row input[type="range"] { flex: 1; accent-color: var(--accent); }
+    .range-val { font-size: 12px; color: var(--muted); width: 32px; text-align: right; }
+
+    /* toggle */
+    .toggle-row { display: flex; align-items: center; gap: 10px; }
+    .toggle { position: relative; width: 40px; height: 22px; }
+    .toggle input { opacity: 0; width: 0; height: 0; }
+    .toggle-slider { position: absolute; inset: 0; background: var(--border);
+      border-radius: 22px; cursor: pointer; transition: 0.2s; }
+    .toggle-slider::before { content: ''; position: absolute; left: 3px; top: 3px;
+      width: 16px; height: 16px; background: #fff; border-radius: 50%; transition: 0.2s; }
+    .toggle input:checked + .toggle-slider { background: var(--green); }
+    .toggle input:checked + .toggle-slider::before { transform: translateX(18px); }
+    .toggle-label { font-size: 13px; color: var(--text); }
+
+    /* full-width field */
+    .field.full { grid-column: 1 / -1; }
+
+    /* ── Level accordion ───────────────────────────────────────── */
+    .level-card { background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius); margin-bottom: 12px; overflow: hidden; }
+    .level-header { display: flex; align-items: center; gap: 10px;
+      padding: 12px 16px; cursor: pointer; user-select: none;
+      border-bottom: 1px solid transparent; transition: border-color 0.15s; }
+    .level-header.open { border-bottom-color: var(--border); }
+    .level-header .chevron { font-size: 10px; color: var(--muted); transition: transform 0.2s; }
+    .level-header.open .chevron { transform: rotate(90deg); }
+    .level-title { font-weight: 700; font-size: 14px; flex: 1; }
+    .level-badge { font-size: 11px; color: var(--muted); background: var(--card);
+      padding: 2px 8px; border-radius: 20px; }
+    .remove-btn { background: none; border: none; color: var(--muted); cursor: pointer;
+      font-size: 16px; padding: 2px 6px; border-radius: 4px; transition: color 0.15s; }
+    .remove-btn:hover { color: #ff4444; }
+    .level-body { padding: 16px; display: none; }
+    .level-body.open { display: block; }
+    .level-subhead { font-size: 11px; text-transform: uppercase; letter-spacing: 0.8px;
+      color: var(--muted); margin: 16px 0 8px; border-bottom: 1px solid var(--border);
+      padding-bottom: 4px; }
+
+    .add-level-btn { display: flex; align-items: center; gap: 8px; padding: 10px 16px;
+      background: none; border: 1px dashed var(--border); border-radius: var(--radius);
+      color: var(--muted); cursor: pointer; font-size: 13px; width: 100%;
+      transition: all 0.15s; }
+    .add-level-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+    /* ── Load bar ───────────────────────────────────────────────── */
+    .load-bar { display: flex; align-items: center; gap: 10px;
+      padding: 8px 20px; background: var(--surface);
+      border-bottom: 1px solid var(--border); flex-shrink: 0; }
+    .load-bar label { font-size: 11px; color: var(--muted); font-weight: 600;
+      text-transform: uppercase; letter-spacing: 0.5px; white-space: nowrap; }
+    .load-bar select { background: var(--card); border: 1px solid var(--border);
+      border-radius: 6px; color: var(--text); padding: 5px 10px; font-size: 12px;
+      outline: none; cursor: pointer; max-width: 280px; }
+    .load-bar select:focus { border-color: var(--accent); }
+    .load-bar-divider { width: 1px; height: 18px; background: var(--border); margin: 0 4px; }
+    .reset-btn { padding: 5px 14px; background: none; border: 1px solid var(--border);
+      border-radius: 6px; color: var(--muted); font-size: 12px; cursor: pointer;
+      transition: all 0.15s; }
+    .reset-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+    /* ── Coming-soon block ──────────────────────────────────────── */
+    .coming-soon-block { border: 1px dashed #44447a; border-radius: var(--radius);
+      padding: 14px 16px; margin-top: 16px; opacity: 0.7; }
+    .coming-soon-header { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+    .coming-soon-header span { font-size: 13px; font-weight: 700; color: var(--text); }
+    .coming-soon-tag { font-size: 10px; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 0.8px; padding: 2px 8px; border-radius: 20px;
+      background: #2a2a4a; color: #8888cc; border: 1px solid #44447a; }
+    .coming-soon-tag.m6 { background: #1e2e1e; color: #77bb77; border-color: #336633; }
+    .coming-soon-tag.active { background: #1a2e1a; color: #66dd66; border-color: #44aa44; }
+
+    /* Apply button row */
+    .apply-row { display: flex; align-items: center; gap: 10px; margin-top: 8px; }
+    .apply-btn { padding: 6px 18px; background: #1a3a1a; border: 1px solid #336633;
+      border-radius: 6px; color: #77cc77; font-size: 12px; font-weight: 700;
+      cursor: pointer; transition: all 0.15s; }
+    .apply-btn:hover:not(:disabled) { background: #224422; border-color: #44aa44; color: #88ee88; }
+    .apply-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .apply-status { font-size: 12px; color: var(--muted); font-style: italic; }
+    .coming-soon-block textarea { width: 100%; background: var(--surface);
+      border: 1px solid #44447a; border-radius: 6px; color: #9999bb;
+      padding: 8px 10px; font-size: 12px; font-family: inherit; resize: vertical;
+      min-height: 60px; outline: none; }
+    .coming-soon-note { font-size: 11px; color: #666699; margin-top: 6px; font-style: italic; }
+
+    /* ── Footer ────────────────────────────────────────────────── */
+    footer { background: var(--surface); border-top: 1px solid var(--border);
+      padding: 14px 24px; display: flex; align-items: center; gap: 14px; flex-shrink: 0; }
+    .generate-btn { padding: 11px 28px; background: var(--accent); color: #fff;
+      border: none; border-radius: var(--radius); font-size: 15px; font-weight: 700;
+      cursor: pointer; transition: background 0.15s; }
+    .generate-btn:hover { background: var(--accent2); }
+    .generate-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    .result-area { display: none; align-items: center; gap: 12px; flex: 1; }
+    .result-area.visible { display: flex; }
+    .result-msg { font-size: 13px; color: var(--green); font-weight: 600; }
+    .result-btn { padding: 8px 18px; border-radius: 8px; border: 1px solid var(--border);
+      background: var(--card); color: var(--text); font-size: 13px; cursor: pointer;
+      text-decoration: none; display: inline-flex; align-items: center; gap: 6px;
+      transition: border-color 0.15s; }
+    .result-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+    .error-msg { color: #ff4444; font-size: 13px; }
+
+    /* ── Scrollbar ─────────────────────────────────────────────── */
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: var(--bg); }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>Playable Ad Generator</h1>
+  <span>Configure → Generate → Preview</span>
+</header>
+
+<div class="main">
+
+  <!-- ── TABS ── -->
+  <div class="tabs">
+    <button class="tab-btn active" data-tab="mechanics">Mechanics</button>
+    <button class="tab-btn"        data-tab="visual">Visual</button>
+    <button class="tab-btn"        data-tab="levels">Levels</button>
+  </div>
+
+  <!-- ── LOAD BAR ── -->
+  <div class="load-bar">
+    <label>Load build</label>
+    <select id="load-build-select">
+      <option value="">-- select a previous build --</option>
+    </select>
+    <div class="load-bar-divider"></div>
+    <button class="reset-btn" id="reset-defaults-btn">Reset to Defaults</button>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════ -->
+  <!-- TAB: MECHANICS                                     -->
+  <!-- ══════════════════════════════════════════════════ -->
+  <div class="tab-content active" id="tab-mechanics">
+    <div class="section-card">
+      <h2>Gameplay Settings</h2>
+      <div class="form-grid">
+
+        <div class="field">
+          <label>Input Type</label>
+          <select id="m_input_type">
+            <option value="tap">Tap</option>
+            <option value="drag">Drag</option>
+            <option value="both">Both</option>
+          </select>
+        </div>
+
+        <div class="field">
+          <label>Card Move Speed</label>
+          <select id="m_card_move_speed">
+            <option value="slow">Slow</option>
+            <option value="medium">Medium</option>
+            <option value="fast">Fast</option>
+          </select>
+        </div>
+
+        <div class="field">
+          <label>Animation Type</label>
+          <select id="m_animation_type">
+            <option value="flip">Flip</option>
+            <option value="slide">Slide</option>
+            <option value="instant">Instant</option>
+          </select>
+        </div>
+
+        <div class="field">
+          <label>Highlight Valid Moves</label>
+          <div class="toggle-row" style="margin-top:4px">
+            <label class="toggle">
+              <input type="checkbox" id="m_highlight_valid_moves" />
+              <span class="toggle-slider"></span>
+            </label>
+            <span class="toggle-label">Show glow on playable cards</span>
+          </div>
+        </div>
+
+        <div class="field">
+          <label>Auto Complete</label>
+          <div class="toggle-row" style="margin-top:4px">
+            <label class="toggle">
+              <input type="checkbox" id="m_auto_complete_enabled" />
+              <span class="toggle-slider"></span>
+            </label>
+            <span class="toggle-label">Auto-complete when possible</span>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════ -->
+  <!-- TAB: VISUAL                                        -->
+  <!-- ══════════════════════════════════════════════════ -->
+  <div class="tab-content" id="tab-visual">
+    <div class="section-card">
+      <h2>Colors</h2>
+      <div class="form-grid" id="color-fields">
+        <!-- injected by JS -->
+      </div>
+    </div>
+    <div class="section-card">
+      <h2>Style</h2>
+      <div class="form-grid">
+
+        <div class="field">
+          <label>UI Theme</label>
+          <select id="v_ui_theme">
+            <option value="dark">Dark</option>
+            <option value="classic">Classic</option>
+            <option value="minimal">Minimal</option>
+          </select>
+        </div>
+
+        <div class="field">
+          <label>Card Back Pattern</label>
+          <select id="v_card_back_pattern">
+            <option value="solid">Solid</option>
+            <option value="stripes">Stripes</option>
+            <option value="dots">Dots</option>
+          </select>
+        </div>
+
+        <div class="field">
+          <label>Font Family</label>
+          <input type="text" id="v_font_family" placeholder="Arial, sans-serif" />
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════ -->
+  <!-- TAB: LEVELS                                        -->
+  <!-- ══════════════════════════════════════════════════ -->
+  <div class="tab-content" id="tab-levels">
+
+    <div class="section-card">
+      <h2>Global Level Settings</h2>
+      <div class="form-grid">
+
+        <div class="field">
+          <label>Target URL</label>
+          <input type="text" id="l_target_url" placeholder="https://example.com" />
+        </div>
+
+        <div class="field">
+          <label>CTA Button Text</label>
+          <input type="text" id="l_cta_text" placeholder="Play Now!" />
+        </div>
+
+        <div class="field">
+          <label>Testing Mode (HUD overlay)</label>
+          <div class="toggle-row" style="margin-top:4px">
+            <label class="toggle">
+              <input type="checkbox" id="l_testing_mode" />
+              <span class="toggle-slider"></span>
+            </label>
+            <span class="toggle-label">Show debug HUD</span>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <div id="levels-list">
+      <!-- level cards injected by JS -->
+    </div>
+
+    <button class="add-level-btn" id="add-level-btn">
+      <span>+</span> Add Level
+    </button>
+
+  </div>
+
+</div><!-- .main -->
+
+<!-- ── FOOTER ── -->
+<footer>
+  <button class="generate-btn" id="generate-btn">Generate Ad</button>
+
+  <div class="result-area" id="result-area">
+    <span class="result-msg" id="result-msg">Build ready!</span>
+    <a class="result-btn" id="preview-btn" href="#" target="_blank">Preview</a>
+    <button class="result-btn" id="download-btn">Download</button>
+  </div>
+
+  <span class="error-msg" id="error-msg"></span>
+</footer>
+
+<script>
+'use strict';
+
+// ============================================================
+// COLOR FIELDS CONFIG
+// ============================================================
+const COLOR_FIELDS = [
+  { id: 'v_background_color',   label: 'Background' },
+  { id: 'v_table_felt_color',   label: 'Table Felt' },
+  { id: 'v_card_face_color',    label: 'Card Face' },
+  { id: 'v_card_back_color',    label: 'Card Back' },
+  { id: 'v_card_border_color',  label: 'Card Border' },
+  { id: 'v_highlight_color',    label: 'Highlight' },
+  { id: 'v_button_color',       label: 'Button' },
+  { id: 'v_button_text_color',  label: 'Button Text' },
+  { id: 'v_primary_text_color', label: 'Primary Text' },
+];
+
+// ============================================================
+// BUILD COLOR INPUTS
+// ============================================================
+function buildColorFields() {
+  const container = document.getElementById('color-fields');
+  COLOR_FIELDS.forEach(({ id, label }) => {
+    const field = document.createElement('div');
+    field.className = 'field';
+    field.innerHTML =
+      '<label>' + label + '</label>' +
+      '<div class="color-row">' +
+        '<input type="color" id="' + id + '" />' +
+        '<input type="text" class="color-hex" id="' + id + '_hex" maxlength="7" placeholder="#000000" />' +
+      '</div>';
+    container.appendChild(field);
+
+    field.querySelector('#' + id).addEventListener('input', function() {
+      field.querySelector('#' + id + '_hex').value = this.value;
+    });
+    field.querySelector('#' + id + '_hex').addEventListener('input', function() {
+      if (/^#[0-9a-fA-F]{6}$/.test(this.value)) {
+        field.querySelector('#' + id).value = this.value;
+      }
+    });
+  });
+}
+
+// ============================================================
+// LEVEL MANAGEMENT
+// ============================================================
+let levelCounter = 0;
+
+function defaultLevel() {
+  return {
+    level_id:          levelCounter + 1,
+    show_draw_pile:    false,
+    enter_animation:   'shuffle_in',
+    enter_duration_ms: 900,
+    layout: {
+      foundation_card: '7H',
+      tableau: [
+        { code: '6S', face_up: true, col: 0, row: 0 },
+        { code: '8D', face_up: true, col: 1, row: 0 }
+      ],
+      draw_pile: [],
+      grid: { cell_width: 82, cell_height: 110, origin_x: 0.5, origin_y: 0.18 }
+    },
+    timings: {
+      win_screen_duration_ms:       2000,
+      fail_screen_duration_ms:      2000,
+      level_transition_duration_ms: 1000
+    }
+  };
+}
+
+function addLevelCard(lvl) {
+  levelCounter++;
+  const id = 'level_' + Date.now() + '_' + levelCounter;
+
+  const card = document.createElement('div');
+  card.className = 'level-card';
+  card.dataset.levelId = id;
+
+  const drawPileStr = (lvl.layout.draw_pile || []).join(', ');
+  const tableauStr  = JSON.stringify(lvl.layout.tableau || [], null, 2);
+
+  card.innerHTML =
+    '<div class="level-header open" data-header="' + id + '">' +
+      '<span class="chevron">&#9658;</span>' +
+      '<span class="level-title">Level ' + levelCounter + '</span>' +
+      '<span class="level-badge" id="' + id + '_badge">' + (lvl.layout.tableau || []).length + ' cards</span>' +
+      '<button class="remove-btn" data-remove="' + id + '" title="Remove level">&#10005;</button>' +
+    '</div>' +
+    '<div class="level-body open" id="' + id + '_body">' +
+
+      '<div class="form-grid">' +
+        '<div class="field">' +
+          '<label>Game Type</label>' +
+          '<select id="' + id + '_game_type">' +
+            '<option value="solitaire_simplified">Solitaire (Simple)</option>' +
+          '</select>' +
+        '</div>' +
+        '<div class="field">' +
+          '<label>Enter Animation</label>' +
+          '<select id="' + id + '_enter_animation">' +
+            '<option value="shuffle_in">Shuffle In</option>' +
+            '<option value="drop_down">Drop Down</option>' +
+            '<option value="bulk">Bulk</option>' +
+          '</select>' +
+        '</div>' +
+        '<div class="field">' +
+          '<label>Enter Duration (ms)</label>' +
+          '<input type="number" id="' + id + '_enter_duration_ms" min="200" max="3000" step="50" value="' + lvl.enter_duration_ms + '" />' +
+        '</div>' +
+        '<div class="field">' +
+          '<label>Show Draw Pile</label>' +
+          '<div class="toggle-row" style="margin-top:4px">' +
+            '<label class="toggle">' +
+              '<input type="checkbox" id="' + id + '_show_draw_pile" ' + (lvl.show_draw_pile ? 'checked' : '') + ' />' +
+              '<span class="toggle-slider"></span>' +
+            '</label>' +
+            '<span class="toggle-label">Show pile at bottom-left</span>' +
+          '</div>' +
+        '</div>' +
+      '</div>' +
+
+      '<div class="level-subhead">Layout</div>' +
+      '<div class="form-grid">' +
+        '<div class="field">' +
+          '<label>Foundation Card</label>' +
+          '<input type="text" id="' + id + '_foundation_card" value="' + lvl.layout.foundation_card + '" placeholder="7H" maxlength="3" />' +
+        '</div>' +
+        '<div class="field">' +
+          '<label>Draw Pile (comma-separated)</label>' +
+          '<input type="text" id="' + id + '_draw_pile" value="' + drawPileStr + '" placeholder="AS, 2D, QH" />' +
+        '</div>' +
+      '</div>' +
+
+      '<div class="level-subhead">Tableau Cards (JSON)</div>' +
+      '<div class="field full">' +
+        '<textarea id="' + id + '_tableau" rows="6">' + tableauStr + '</textarea>' +
+      '</div>' +
+
+      '<div class="level-subhead">Grid</div>' +
+      '<div class="form-grid">' +
+        '<div class="field">' +
+          '<label>Cell Width (px)</label>' +
+          '<input type="number" id="' + id + '_cell_width" min="40" max="160" value="' + lvl.layout.grid.cell_width + '" />' +
+        '</div>' +
+        '<div class="field">' +
+          '<label>Cell Height (px)</label>' +
+          '<input type="number" id="' + id + '_cell_height" min="60" max="200" value="' + lvl.layout.grid.cell_height + '" />' +
+        '</div>' +
+        '<div class="field">' +
+          '<label>Origin X (0=left, 1=right)</label>' +
+          '<div class="range-row">' +
+            '<input type="range" id="' + id + '_origin_x" min="0" max="1" step="0.01" value="' + lvl.layout.grid.origin_x + '" />' +
+            '<span class="range-val" id="' + id + '_origin_x_val">' + lvl.layout.grid.origin_x + '</span>' +
+          '</div>' +
+        '</div>' +
+        '<div class="field">' +
+          '<label>Origin Y (0=top, 1=bottom)</label>' +
+          '<div class="range-row">' +
+            '<input type="range" id="' + id + '_origin_y" min="0" max="1" step="0.01" value="' + lvl.layout.grid.origin_y + '" />' +
+            '<span class="range-val" id="' + id + '_origin_y_val">' + lvl.layout.grid.origin_y + '</span>' +
+          '</div>' +
+        '</div>' +
+      '</div>' +
+
+      '<div class="level-subhead">Timings</div>' +
+      '<div class="form-grid">' +
+        '<div class="field">' +
+          '<label>Win Screen (ms)</label>' +
+          '<input type="number" id="' + id + '_win_ms" min="500" max="10000" step="100" value="' + lvl.timings.win_screen_duration_ms + '" />' +
+        '</div>' +
+        '<div class="field">' +
+          '<label>Fail Screen (ms)</label>' +
+          '<input type="number" id="' + id + '_fail_ms" min="500" max="10000" step="100" value="' + lvl.timings.fail_screen_duration_ms + '" />' +
+        '</div>' +
+        '<div class="field">' +
+          '<label>Level Transition (ms)</label>' +
+          '<input type="number" id="' + id + '_trans_ms" min="200" max="5000" step="100" value="' + lvl.timings.level_transition_duration_ms + '" />' +
+        '</div>' +
+      '</div>' +
+
+      '<div class="coming-soon-block" style="border-color:#336633; opacity:1">' +
+        '<div class="coming-soon-header">' +
+          '<span>&#127918; Describe the Gameplay</span>' +
+          '<span class="coming-soon-tag active">AI — Active</span>' +
+        '</div>' +
+        '<textarea id="' + id + '_gameplay_desc" style="border-color:#336633; color:var(--text)" placeholder="e.g. Foundation is 7H. Three columns — 6S face-up with 8C behind it, 9H face-up, 10D face-up. Easy chain, no draw pile."></textarea>' +
+        '<div class="apply-row">' +
+          '<button class="apply-btn" id="' + id + '_apply_btn">Apply with AI</button>' +
+          '<span class="apply-status" id="' + id + '_apply_status"></span>' +
+        '</div>' +
+      '</div>' +
+
+      '<div class="coming-soon-block">' +
+        '<div class="coming-soon-header">' +
+          '<span>🎨 Describe the Creative</span>' +
+          '<span class="coming-soon-tag">Future milestone</span>' +
+        '</div>' +
+        '<textarea id="' + id + '_creative_desc" placeholder="e.g. Wild west desert background, sheriff sitting and relaxing, warm dusty colors, animated tumbleweeds..."></textarea>' +
+        '<div class="coming-soon-note">In a future version this will generate visual themes, backgrounds, and character animations for this level.</div>' +
+      '</div>' +
+
+    '</div>';
+
+  document.getElementById('levels-list').appendChild(card);
+
+  // Set dropdown values (can't reliably do this in innerHTML)
+  document.getElementById(id + '_game_type').value      = lvl.game_type || 'solitaire_simplified';
+  document.getElementById(id + '_enter_animation').value = lvl.enter_animation;
+
+  // Range live value labels
+  ['origin_x', 'origin_y'].forEach(function(key) {
+    var slider = document.getElementById(id + '_' + key);
+    var valEl  = document.getElementById(id + '_' + key + '_val');
+    slider.addEventListener('input', function() {
+      valEl.textContent = parseFloat(slider.value).toFixed(2);
+    });
+  });
+
+  // Tableau textarea -> update badge
+  document.getElementById(id + '_tableau').addEventListener('input', function() {
+    try {
+      var arr = JSON.parse(this.value);
+      document.getElementById(id + '_badge').textContent = arr.length + ' cards';
+    } catch(e) {}
+  });
+
+  // Toggle header collapse
+  card.querySelector('[data-header="' + id + '"]').addEventListener('click', function(e) {
+    if (e.target.closest('[data-remove]')) return;
+    var header = card.querySelector('[data-header="' + id + '"]');
+    var body   = document.getElementById(id + '_body');
+    header.classList.toggle('open');
+    body.classList.toggle('open');
+  });
+
+  // Remove button
+  card.querySelector('[data-remove="' + id + '"]').addEventListener('click', function() {
+    card.remove();
+    renumberLevels();
+  });
+
+  // Apply with AI button
+  document.getElementById(id + '_apply_btn').addEventListener('click', function() {
+    var desc   = document.getElementById(id + '_gameplay_desc').value.trim();
+    var btn    = document.getElementById(id + '_apply_btn');
+    var status = document.getElementById(id + '_apply_status');
+
+    if (!desc) { status.textContent = 'Write a description first.'; return; }
+
+    var levelIndex = Array.from(document.querySelectorAll('#levels-list .level-card')).indexOf(card);
+
+    btn.disabled      = true;
+    btn.textContent   = 'Thinking...';
+    status.textContent = '';
+    status.style.color = 'var(--muted)';
+
+    fetch('/api/describe/gameplay', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ description: desc, level_index: levelIndex })
+    })
+    .then(function(r) {
+      if (!r.ok) return r.json().then(function(e) { throw new Error(e.detail || 'Unknown error'); });
+      return r.json();
+    })
+    .then(function(data) {
+      var layout = data.layout;
+
+      // Update foundation card
+      document.getElementById(id + '_foundation_card').value = layout.foundation_card;
+
+      // Update tableau textarea
+      document.getElementById(id + '_tableau').value = JSON.stringify(layout.tableau, null, 2);
+
+      // Update tableau badge
+      document.getElementById(id + '_badge').textContent = layout.tableau.length + ' cards';
+
+      // Update draw pile (comma-separated)
+      document.getElementById(id + '_draw_pile').value = (layout.draw_pile || []).join(', ');
+
+      // Update grid
+      document.getElementById(id + '_cell_width').value  = layout.grid.cell_width;
+      document.getElementById(id + '_cell_height').value = layout.grid.cell_height;
+      document.getElementById(id + '_origin_x').value    = layout.grid.origin_x;
+      document.getElementById(id + '_origin_y').value    = layout.grid.origin_y;
+      document.getElementById(id + '_origin_x_val').textContent = parseFloat(layout.grid.origin_x).toFixed(2);
+      document.getElementById(id + '_origin_y_val').textContent = parseFloat(layout.grid.origin_y).toFixed(2);
+
+      status.style.color = '#66dd66';
+      status.textContent = 'Layout applied!';
+      setTimeout(function() { status.textContent = ''; }, 4000);
+    })
+    .catch(function(err) {
+      status.style.color = '#ff6666';
+      status.textContent = 'Error: ' + err.message;
+    })
+    .finally(function() {
+      btn.disabled    = false;
+      btn.textContent = 'Apply with AI';
+    });
+  });
+
+  renumberLevels();
+}
+
+function renumberLevels() {
+  document.querySelectorAll('#levels-list .level-card').forEach(function(card, i) {
+    card.querySelector('.level-title').textContent = 'Level ' + (i + 1);
+  });
+}
+
+// ============================================================
+// POPULATE FORM FROM DEFAULTS
+// ============================================================
+function setVal(id, val) {
+  var el = document.getElementById(id);
+  if (!el) return;
+  if (el.type === 'checkbox') { el.checked = !!val; return; }
+  el.value = val;
+}
+
+function setColor(id, hex) {
+  var picker = document.getElementById(id);
+  var text   = document.getElementById(id + '_hex');
+  if (picker) picker.value = hex;
+  if (text)   text.value   = hex;
+}
+
+function populateFromDefaults(defaults) {
+  var m = defaults.mechanics;
+  setVal('m_input_type',            m.input_type);
+  setVal('m_card_move_speed',       m.card_move_speed);
+  setVal('m_animation_type',        m.animation_type);
+  setVal('m_highlight_valid_moves', m.highlight_valid_moves);
+  setVal('m_auto_complete_enabled', m.auto_complete_enabled);
+
+  var v = defaults.visual;
+  setColor('v_background_color',   v.background_color);
+  setColor('v_table_felt_color',   v.table_felt_color);
+  setColor('v_card_face_color',    v.card_face_color);
+  setColor('v_card_back_color',    v.card_back_color);
+  setColor('v_card_border_color',  v.card_border_color);
+  setColor('v_highlight_color',    v.highlight_color);
+  setColor('v_button_color',       v.button_color);
+  setColor('v_button_text_color',  v.button_text_color);
+  setColor('v_primary_text_color', v.primary_text_color);
+  setVal('v_ui_theme',          v.ui_theme);
+  setVal('v_card_back_pattern', v.card_back_pattern);
+  setVal('v_font_family',       v.font_family);
+
+  var l = defaults.levels;
+  setVal('l_target_url',   l.target_url);
+  setVal('l_cta_text',     l.cta_text);
+  setVal('l_testing_mode', l.testing_mode);
+
+  document.getElementById('levels-list').innerHTML = '';
+  levelCounter = 0;
+  (l.levels || []).forEach(function(lvl) { addLevelCard(lvl); });
+}
+
+// ============================================================
+// READ CONFIG FROM FORM
+// ============================================================
+function getColor(id) {
+  var hexEl = document.getElementById(id + '_hex');
+  if (hexEl && hexEl.value) return hexEl.value;
+  var picker = document.getElementById(id);
+  return picker ? picker.value : '#000000';
+}
+
+function buildConfig() {
+  var mechanics = {
+    mechanics_version:     '1.0',
+    genre:                 'solitaire_simplified',
+    input_type:            document.getElementById('m_input_type').value,
+    card_move_speed:       document.getElementById('m_card_move_speed').value,
+    animation_type:        document.getElementById('m_animation_type').value,
+    highlight_valid_moves: document.getElementById('m_highlight_valid_moves').checked,
+    auto_complete_enabled: document.getElementById('m_auto_complete_enabled').checked
+  };
+
+  var visual = {
+    visual_version:      '1.0',
+    background_color:    getColor('v_background_color'),
+    table_felt_color:    getColor('v_table_felt_color'),
+    card_face_color:     getColor('v_card_face_color'),
+    card_back_color:     getColor('v_card_back_color'),
+    card_back_pattern:   document.getElementById('v_card_back_pattern').value,
+    card_border_color:   getColor('v_card_border_color'),
+    highlight_color:     getColor('v_highlight_color'),
+    button_color:        getColor('v_button_color'),
+    button_text_color:   getColor('v_button_text_color'),
+    primary_text_color:  getColor('v_primary_text_color'),
+    font_family:         document.getElementById('v_font_family').value,
+    ui_theme:            document.getElementById('v_ui_theme').value
+  };
+
+  var levelCards = document.querySelectorAll('#levels-list .level-card');
+  var levelsArr  = [];
+
+  levelCards.forEach(function(card, idx) {
+    var id = card.dataset.levelId;
+    function g(n) { return document.getElementById(id + '_' + n); }
+
+    var tableau = [];
+    try { tableau = JSON.parse(g('tableau').value); } catch(e) {}
+
+    var drawPileRaw = g('draw_pile').value.trim();
+    var draw_pile   = drawPileRaw
+      ? drawPileRaw.split(',').map(function(s) { return s.trim(); }).filter(Boolean)
+      : [];
+
+    levelsArr.push({
+      level_id:          idx + 1,
+      game_type:         g('game_type').value,
+      show_draw_pile:    g('show_draw_pile').checked,
+      enter_animation:   g('enter_animation').value,
+      enter_duration_ms: parseInt(g('enter_duration_ms').value) || 900,
+      layout: {
+        foundation_card: g('foundation_card').value.trim(),
+        tableau:         tableau,
+        draw_pile:       draw_pile,
+        grid: {
+          cell_width:  parseInt(g('cell_width').value)  || 82,
+          cell_height: parseInt(g('cell_height').value) || 110,
+          origin_x:    parseFloat(g('origin_x').value)  || 0.5,
+          origin_y:    parseFloat(g('origin_y').value)  || 0.18
+        }
+      },
+      timings: {
+        win_screen_duration_ms:       parseInt(g('win_ms').value)   || 2000,
+        fail_screen_duration_ms:      parseInt(g('fail_ms').value)  || 2000,
+        level_transition_duration_ms: parseInt(g('trans_ms').value) || 1000
+      }
+    });
+  });
+
+  var levels = {
+    levels_version: '1.0',
+    genre:          'solitaire_simplified',
+    testing_mode:   document.getElementById('l_testing_mode').checked,
+    total_levels:   levelsArr.length,
+    target_url:     document.getElementById('l_target_url').value.trim(),
+    cta_text:       document.getElementById('l_cta_text').value.trim(),
+    levels:         levelsArr
+  };
+
+  return { mechanics: mechanics, levels: levels, visual: visual };
+}
+
+// ============================================================
+// GENERATE
+// ============================================================
+var lastPlayUrl = null;
+
+function onGenerate() {
+  var btn     = document.getElementById('generate-btn');
+  var errEl   = document.getElementById('error-msg');
+  var resultEl = document.getElementById('result-area');
+
+  btn.disabled        = true;
+  btn.textContent     = 'Building...';
+  errEl.textContent   = '';
+  resultEl.classList.remove('visible');
+
+  var config = buildConfig();
+
+  fetch('/api/generate', {
+    method:  'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body:    JSON.stringify(config)
+  })
+  .then(function(res) {
+    if (!res.ok) return res.json().then(function(e) { throw new Error(e.detail || 'Unknown error'); });
+    return res.json();
+  })
+  .then(function(data) {
+    lastPlayUrl = data.play_url;
+    document.getElementById('preview-btn').href = lastPlayUrl;
+    document.getElementById('result-msg').textContent = 'Build ready! (' + data.run_id + ')';
+    resultEl.classList.add('visible');
+  })
+  .catch(function(err) {
+    errEl.textContent = 'Error: ' + err.message;
+  })
+  .finally(function() {
+    btn.disabled    = false;
+    btn.textContent = 'Generate Ad';
+  });
+}
+
+function onDownload() {
+  if (!lastPlayUrl) return;
+  fetch(lastPlayUrl)
+    .then(function(r) { return r.blob(); })
+    .then(function(blob) {
+      var url = URL.createObjectURL(blob);
+      var a   = document.createElement('a');
+      a.href     = url;
+      a.download = 'playable_ad.html';
+      a.click();
+      URL.revokeObjectURL(url);
+    })
+    .catch(function(err) {
+      document.getElementById('error-msg').textContent = 'Download failed: ' + err.message;
+    });
+}
+
+// ============================================================
+// TABS
+// ============================================================
+document.querySelectorAll('.tab-btn').forEach(function(btn) {
+  btn.addEventListener('click', function() {
+    document.querySelectorAll('.tab-btn').forEach(function(b) { b.classList.remove('active'); });
+    document.querySelectorAll('.tab-content').forEach(function(c) { c.classList.remove('active'); });
+    btn.classList.add('active');
+    document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
+  });
+});
+
+// ============================================================
+// WIRE UP + INIT
+// ============================================================
+document.getElementById('generate-btn').addEventListener('click', onGenerate);
+document.getElementById('download-btn').addEventListener('click', onDownload);
+document.getElementById('add-level-btn').addEventListener('click', function() {
+  addLevelCard(defaultLevel());
+});
+
+// ============================================================
+// LOAD BAR — previous builds + reset to defaults
+// ============================================================
+var defaultsCache = null;
+
+function loadDefaults() {
+  return fetch('/api/defaults')
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      defaultsCache = data;
+      populateFromDefaults(data);
+      document.getElementById('load-build-select').value = '';
+    })
+    .catch(function(err) {
+      document.getElementById('error-msg').textContent = 'Could not load defaults: ' + err.message;
+    });
+}
+
+function populateBuildList() {
+  fetch('/api/runs')
+    .then(function(r) { return r.json(); })
+    .then(function(runs) {
+      var sel = document.getElementById('load-build-select');
+      runs.forEach(function(run) {
+        if (!run.has_build) return;
+        var opt = document.createElement('option');
+        opt.value = run.run_id;
+        var date = new Date(run.created_at).toLocaleString();
+        opt.textContent = run.run_id + '  (' + date + ')';
+        sel.appendChild(opt);
+      });
+    });
+}
+
+document.getElementById('load-build-select').addEventListener('change', function() {
+  var runId = this.value;
+  if (!runId) return;
+  fetch('/api/runs/' + runId)
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      populateFromDefaults(data);
+    })
+    .catch(function(err) {
+      document.getElementById('error-msg').textContent = 'Could not load build: ' + err.message;
+    });
+});
+
+document.getElementById('reset-defaults-btn').addEventListener('click', function() {
+  if (defaultsCache) {
+    populateFromDefaults(defaultsCache);
+    document.getElementById('load-build-select').value = '';
+  } else {
+    loadDefaults();
+  }
+});
+
+// ============================================================
+// INIT
+// ============================================================
+buildColorFields();
+loadDefaults();
+populateBuildList();
+</script>
+
+</body>
+</html>

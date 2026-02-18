@@ -1,0 +1,663 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+  <title>Engine Test — Playable Ad</title>
+  <style>
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body { width: 100%; height: 100%; overflow: hidden; background: #111; touch-action: none; }
+    canvas { display: block; position: absolute; }
+  </style>
+</head>
+<body>
+
+<script src="https://cdn.jsdelivr.net/npm/pixi.js@7.4.2/dist/pixi.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/pixi-filters@5.3.1/dist/browser/pixi-filters.js"></script>
+
+<script>
+// ============================================================
+// TEST CONFIG — edit this freely to test different setups
+// ============================================================
+window.__TEST_CONFIG__ = {
+  mechanics: {
+    input_type:            "tap",
+    card_move_speed:       "medium",
+    animation_type:        "flip",
+    highlight_valid_moves: true,
+    auto_complete_enabled: false
+  },
+  levels: {
+    levels_version: "1.0",
+    genre:          "solitaire_simplified",
+    testing_mode:   true,
+    total_levels:   2,
+    target_url:     "https://www.phantombeasts.studio/",
+    cta_text:       "Play Now!",
+    levels: [
+      {
+        level_id:          1,
+        show_draw_pile:    false,
+        enter_animation:   "shuffle_in",
+        enter_duration_ms: 900,
+        layout: {
+          foundation_card: "2H",
+          tableau: [
+            { code: "3S", face_up: true, col: 0, row: 0 },
+            { code: "4D", face_up: true, col: 1, row: 0 },
+            { code: "5C", face_up: true, col: 2, row: 0 },
+            { code: "6H", face_up: true, col: 3, row: 0 }
+          ],
+          draw_pile: [],
+          grid: { cell_width: 82, cell_height: 110, origin_x: 0.5, origin_y: 0.22 }
+        },
+        timings: { win_screen_duration_ms: 2000, fail_screen_duration_ms: 2000, level_transition_duration_ms: 1000 }
+      },
+      {
+        level_id:          2,
+        show_draw_pile:    false,
+        enter_animation:   "drop_down",
+        enter_duration_ms: 1000,
+        layout: {
+          foundation_card: "7H",
+          tableau: [
+            { code: "6S",  face_up: true,  col: 0, row: 0 },
+            { code: "7D",  face_up: false, col: 0, row: 1 },
+            { code: "8C",  face_up: false, col: 0, row: 2 },
+            { code: "9H",  face_up: true,  col: 1, row: 0 },
+            { code: "AS",  face_up: false, col: 1, row: 1 },
+            { code: "10D", face_up: true,  col: 2, row: 0 },
+            { code: "KC",  face_up: false, col: 2, row: 1 },
+            { code: "JH",  face_up: true,  col: 3, row: 0 },
+            { code: "QS",  face_up: false, col: 3, row: 1 }
+          ],
+          draw_pile: [],
+          grid: { cell_width: 82, cell_height: 110, origin_x: 0.5, origin_y: 0.18 }
+        },
+        timings: { win_screen_duration_ms: 2000, fail_screen_duration_ms: 2000, level_transition_duration_ms: 1000 }
+      }
+    ]
+  },
+  visual: {
+    background_color:   "#1a472a",
+    table_felt_color:   "#15803d",
+    card_face_color:    "#ffffff",
+    card_back_color:    "#1a237e",
+    card_back_pattern:  "solid",
+    card_border_color:  "#333333",
+    highlight_color:    "#ffeb3b",
+    button_color:       "#ff5722",
+    button_text_color:  "#ffffff",
+    primary_text_color: "#ffffff",
+    font_family:        "Arial",
+    ui_theme:           "dark"
+  }
+};
+</script>
+
+<!--
+  Everything below is identical to engine_template.html,
+  except CONFIG is set to window.__TEST_CONFIG__ instead of __GAME_CONFIG__.
+-->
+<script>
+'use strict';
+
+const CONFIG = window.__TEST_CONFIG__;
+
+// ============================================================
+// CONSTANTS
+// ============================================================
+const STAGE_W = 390;
+const STAGE_H = 844;
+const CARD_W  = 70;
+const CARD_H  = 96;
+const VALS    = ['A','2','3','4','5','6','7','8','9','10','J','Q','K'];
+const SUITS   = { H: '\u2665', D: '\u2666', C: '\u2663', S: '\u2660' };
+const SPEEDS  = { slow: 600, medium: 350, fast: 180 };
+const CONFETTI_COLORS = [0xffe066, 0xff6b6b, 0x6bffb8, 0x6bb8ff, 0xff6bff, 0xffffff];
+
+function parseCard(code) {
+  const suit  = code.slice(-1);
+  const value = code.slice(0, -1);
+  return { code, value, suit, symbol: SUITS[suit], isRed: suit === 'H' || suit === 'D' };
+}
+function isValidMove(cardCode, foundationCode) {
+  const ci = VALS.indexOf(parseCard(cardCode).value);
+  const fi = VALS.indexOf(parseCard(foundationCode).value);
+  return (ci + 1) % 13 === fi || (fi + 1) % 13 === ci;
+}
+function hex(str) { return parseInt(str.replace('#', ''), 16); }
+function rand(min, max) { return min + Math.random() * (max - min); }
+
+const Ease = {
+  linear:    t => t,
+  easeOut:   t => 1 - Math.pow(1 - t, 3),
+  easeIn:    t => t * t * t,
+  easeInOut: t => t < 0.5 ? 4*t*t*t : 1 - Math.pow(-2*t+2,3)/2,
+  spring:    t => {
+    if (t === 0) return 0; if (t === 1) return 1;
+    return Math.pow(2, -10*t) * Math.sin((t*10 - 0.75) * (2*Math.PI/3)) + 1;
+  },
+  bounce: t => {
+    const n1 = 7.5625, d1 = 2.75;
+    if      (t < 1/d1)    return n1*t*t;
+    else if (t < 2/d1)  { t -= 1.5/d1;   return n1*t*t + 0.75; }
+    else if (t < 2.5/d1){ t -= 2.25/d1;  return n1*t*t + 0.9375; }
+    else                  { t -= 2.625/d1; return n1*t*t + 0.984375; }
+  }
+};
+
+const app = new PIXI.Application({
+  width: STAGE_W, height: STAGE_H, antialias: true,
+  resolution: Math.min(window.devicePixelRatio || 1, 2),
+  autoDensity: true, backgroundColor: 0x000000,
+});
+document.body.appendChild(app.view);
+
+function resize() {
+  const W = window.innerWidth, H = window.innerHeight;
+  const scale = Math.min(W / STAGE_W, H / STAGE_H);
+  const cw = Math.round(STAGE_W * scale), ch = Math.round(STAGE_H * scale);
+  app.view.style.width    = cw + 'px';
+  app.view.style.height   = ch + 'px';
+  app.view.style.position = 'absolute';
+  app.view.style.left     = Math.round((W - cw) / 2) + 'px';
+  app.view.style.top      = Math.round((H - ch) / 2) + 'px';
+}
+resize();
+window.addEventListener('resize', resize);
+
+const tweens = [];
+function tween(obj, props, duration, ease, onDone) {
+  const start = {};
+  for (const k in props) start[k] = obj[k];
+  tweens.push({ obj, start, props, duration, ease: ease || Ease.easeOut, elapsed: 0, done: false, onDone });
+}
+function updateTweens() {
+  const dt = app.ticker.deltaMS;
+  for (let i = tweens.length - 1; i >= 0; i--) {
+    const tw = tweens[i];
+    if (tw.done) { tweens.splice(i, 1); continue; }
+    tw.elapsed += dt;
+    const t = Math.min(tw.elapsed / tw.duration, 1);
+    const e = tw.ease(t);
+    for (const k in tw.props) tw.obj[k] = tw.start[k] + (tw.props[k] - tw.start[k]) * e;
+    if (t >= 1) { tw.done = true; if (tw.onDone) tw.onDone(); }
+  }
+}
+function delay(ms, cb) {
+  let elapsed = 0;
+  const tick = () => { elapsed += app.ticker.deltaMS; if (elapsed >= ms) { app.ticker.remove(tick); cb(); } };
+  app.ticker.add(tick);
+}
+
+const gameContainer     = new PIXI.Container();
+const bgLayer           = new PIXI.Graphics();
+const tableauContainer  = new PIXI.Container();
+const foundationLayer   = new PIXI.Container();
+const drawPileContainer = new PIXI.Container();
+const hudContainer      = new PIXI.Container();
+const flyingCardLayer   = new PIXI.Container();
+const overlayContainer  = new PIXI.Container();
+app.stage.addChild(gameContainer);
+gameContainer.addChild(bgLayer);
+gameContainer.addChild(tableauContainer);
+gameContainer.addChild(foundationLayer);
+gameContainer.addChild(drawPileContainer);
+gameContainer.addChild(hudContainer);
+gameContainer.addChild(flyingCardLayer);
+gameContainer.addChild(overlayContainer);
+
+function drawBackground() {
+  const V = CONFIG.visual;
+  bgLayer.clear();
+  bgLayer.beginFill(hex(V.background_color));
+  bgLayer.drawRect(0, 0, STAGE_W, STAGE_H);
+  bgLayer.endFill();
+  bgLayer.beginFill(hex(V.table_felt_color), 0.35);
+  bgLayer.drawRoundedRect(12, 90, STAGE_W - 24, STAGE_H - 190, 14);
+  bgLayer.endFill();
+}
+
+// Pip positions: normalized [x, y] within pip area (0–1)
+const PIP_POSITIONS = {
+  'A':  [[.5,.5]],
+  '2':  [[.5,.22],[.5,.78]],
+  '3':  [[.5,.18],[.5,.5],[.5,.82]],
+  '4':  [[.28,.22],[.72,.22],[.28,.78],[.72,.78]],
+  '5':  [[.28,.18],[.72,.18],[.5,.5],[.28,.82],[.72,.82]],
+  '6':  [[.28,.18],[.72,.18],[.28,.5],[.72,.5],[.28,.82],[.72,.82]],
+  '7':  [[.28,.14],[.72,.14],[.5,.32],[.28,.5],[.72,.5],[.28,.75],[.72,.75]],
+  '8':  [[.28,.12],[.72,.12],[.28,.37],[.72,.37],[.28,.63],[.72,.63],[.28,.88],[.72,.88]],
+  '9':  [[.28,.1],[.72,.1],[.28,.33],[.72,.33],[.5,.5],[.28,.67],[.72,.67],[.28,.9],[.72,.9]],
+  '10': [[.28,.08],[.72,.08],[.5,.22],[.28,.38],[.72,.38],[.28,.62],[.72,.62],[.5,.78],[.28,.92],[.72,.92]],
+};
+const PIP_X0 = 10, PIP_W = 50, PIP_Y0 = 22, PIP_H = 52;
+
+function addFaceTexts(container, info) {
+  const color = info.isRed ? 0xcc2222 : 0x111111;
+  const base  = { fontFamily: 'Arial', fontWeight: 'bold', fill: color };
+
+  // Top-left corner label
+  const tl = new PIXI.Text(info.value + '\n' + info.symbol, { ...base, fontSize: 11, lineHeight: 13 });
+  tl.x = 4; tl.y = 3;
+  container.addChild(tl);
+
+  // Bottom-right corner — use rotated container to avoid overflow
+  const brCont = new PIXI.Container();
+  brCont.x = CARD_W; brCont.y = CARD_H; brCont.rotation = Math.PI;
+  const br = new PIXI.Text(info.value + '\n' + info.symbol, { ...base, fontSize: 11, lineHeight: 13 });
+  br.x = 4; br.y = 3;
+  brCont.addChild(br); container.addChild(brCont);
+
+  // Center — pip layout or face card letter
+  if (PIP_POSITIONS[info.value]) {
+    const pips = PIP_POSITIONS[info.value];
+    const sz = pips.length <= 2 ? 15 : pips.length <= 4 ? 13 : pips.length <= 6 ? 12 : 10;
+    for (const [nx, ny] of pips) {
+      const pip = new PIXI.Text(info.symbol, { ...base, fontSize: sz });
+      pip.anchor.set(0.5); pip.x = PIP_X0 + nx * PIP_W; pip.y = PIP_Y0 + ny * PIP_H;
+      container.addChild(pip);
+    }
+  } else {
+    // J Q K — big letter in center
+    const ltr = new PIXI.Text(info.value, { ...base, fontSize: 28 });
+    ltr.anchor.set(0.5); ltr.x = CARD_W / 2; ltr.y = CARD_H / 2;
+    container.addChild(ltr);
+  }
+}
+
+function makeCardSprite(code, faceUp) {
+  const V = CONFIG.visual;
+  const c = new PIXI.Container();
+  c.interactive = true; c.buttonMode = true;
+  const g = new PIXI.Graphics();
+  c.addChild(g);
+  if (faceUp) {
+    const info = parseCard(code);
+    g.beginFill(hex(V.card_face_color)); g.lineStyle(1.5, hex(V.card_border_color));
+    g.drawRoundedRect(0, 0, CARD_W, CARD_H, 6); g.endFill();
+    addFaceTexts(c, info);
+  } else {
+    g.beginFill(hex(V.card_back_color)); g.lineStyle(1.5, hex(V.card_border_color));
+    g.drawRoundedRect(0, 0, CARD_W, CARD_H, 6); g.endFill();
+    if (V.card_back_pattern === 'stripes') {
+      g.lineStyle(1, 0xffffff, 0.15);
+      for (let x = 8; x < CARD_W; x += 8) { g.moveTo(x, 0); g.lineTo(x, CARD_H); }
+    } else if (V.card_back_pattern === 'dots') {
+      g.lineStyle(0); g.beginFill(0xffffff, 0.15);
+      for (let x = 10; x < CARD_W; x += 10)
+        for (let y = 10; y < CARD_H; y += 10) g.drawCircle(x, y, 2);
+      g.endFill();
+    }
+    g.lineStyle(1, 0xffffff, 0.2); g.drawRoundedRect(4, 4, CARD_W - 8, CARD_H - 8, 4);
+  }
+  c._code = code; c._faceUp = faceUp;
+  return c;
+}
+
+let glowFilter = null, glowTime = 0;
+function initGlowFilter() {
+  if (PIXI.filters && PIXI.filters.GlowFilter) {
+    glowFilter = new PIXI.filters.GlowFilter({
+      outerStrength: 0, innerStrength: 0,
+      color: hex(CONFIG.visual.highlight_color), distance: 14, quality: 0.1,
+    });
+  }
+}
+function updateGlow() {
+  if (!glowFilter) return;
+  glowTime += app.ticker.deltaMS * 0.004;
+  glowFilter.outerStrength = 1.8 + Math.sin(glowTime) * 1.2;
+}
+
+let foundationSprite = null;
+function drawFoundationSlot() {
+  const slot = new PIXI.Graphics();
+  slot.lineStyle(2, 0xffffff, 0.25); slot.drawRoundedRect(0, 0, CARD_W, CARD_H, 6);
+  slot.x = STAGE_W / 2 - CARD_W / 2; slot.y = 560;
+  foundationLayer.addChild(slot);
+}
+function setFoundation(code) {
+  if (foundationSprite) { foundationLayer.removeChild(foundationSprite); foundationSprite.destroy({ children: true }); }
+  foundationSprite = makeCardSprite(code, true);
+  foundationSprite.x = STAGE_W / 2 - CARD_W / 2; foundationSprite.y = 560;
+  foundationSprite.interactive = false;
+  foundationLayer.addChild(foundationSprite);
+  state.foundation = code;
+}
+
+function buildDrawPile() {
+  drawPileContainer.removeChildren();
+  if (!state.drawPile.length) return;
+  const x = 24, y = STAGE_H - CARD_H - 50;
+  for (let i = Math.min(2, state.drawPile.length - 1); i >= 0; i--) {
+    const bg = new PIXI.Graphics();
+    bg.beginFill(hex(CONFIG.visual.card_back_color)); bg.lineStyle(1, hex(CONFIG.visual.card_border_color));
+    bg.drawRoundedRect(i * 2, -i * 2, CARD_W, CARD_H, 6); bg.endFill();
+    drawPileContainer.addChild(bg);
+  }
+  const top = makeCardSprite(state.drawPile[0], false);
+  top.on('pointerdown', onDrawPileTap);
+  drawPileContainer.addChild(top);
+  const lbl = new PIXI.Text('DRAW', { fontFamily: 'Arial', fontSize: 10, fill: 0xffffff, alpha: 0.5 });
+  lbl.anchor.set(0.5, 0); lbl.x = CARD_W / 2; lbl.y = CARD_H + 4;
+  drawPileContainer.addChild(lbl);
+  drawPileContainer.x = x; drawPileContainer.y = y;
+}
+
+function buildHUD() {
+  hudContainer.removeChildren();
+  const remaining = state.tableau.filter(c => !c.removed).length;
+  const style = { fontFamily: 'Arial', fontSize: 13, fill: 0xffffff };
+  const lvlTxt = new PIXI.Text(`Level ${state.levelIndex + 1} / ${CONFIG.levels.total_levels}`, style);
+  lvlTxt.x = 16; lvlTxt.y = 18; hudContainer.addChild(lvlTxt);
+  const cardsTxt = new PIXI.Text(`Cards left: ${remaining}`, style);
+  cardsTxt.anchor.set(1, 0); cardsTxt.x = STAGE_W - 16; cardsTxt.y = 18; hudContainer.addChild(cardsTxt);
+  const badge = new PIXI.Graphics();
+  badge.beginFill(0xcc2200); badge.drawRoundedRect(0, 0, 108, 18, 4); badge.endFill();
+  badge.x = STAGE_W / 2 - 54; badge.y = 14; hudContainer.addChild(badge);
+  const testTxt = new PIXI.Text('TESTING MODE', { fontFamily: 'Arial', fontSize: 9, fill: 0xffffff });
+  testTxt.anchor.set(0.5, 0.5); testTxt.x = STAGE_W / 2; testTxt.y = 23; hudContainer.addChild(testTxt);
+}
+
+function getCardPos(col, row, grid, totalCols) {
+  const totalW = totalCols * grid.cell_width;
+  const startX = Math.round(grid.origin_x * STAGE_W - totalW / 2);
+  const startY = Math.round(grid.origin_y * STAGE_H);
+  return { x: startX + col * grid.cell_width + (grid.cell_width - CARD_W) / 2, y: startY + row * grid.cell_height };
+}
+
+const state = { phase: 'entering', levelIndex: 0, foundation: '', tableau: [], drawPile: [], drawIndex: -1, animating: false };
+
+const PEEK = 14; // px of face-down card visible below the face-up card above it
+
+function buildLevel(index) {
+  const lvl  = CONFIG.levels.levels[index];
+  const grid = lvl.layout.grid;
+  tableauContainer.removeChildren(); drawPileContainer.removeChildren();
+  flyingCardLayer.removeChildren(); foundationLayer.removeChildren();
+  state.tableau = []; state.drawPile = [...lvl.layout.draw_pile];
+  state.drawIndex = -1; state.animating = true; state.phase = 'entering'; state.levelIndex = index;
+  drawFoundationSlot(); setFoundation(lvl.layout.foundation_card);
+
+  const totalCols = Math.max(...lvl.layout.tableau.map(c => c.col)) + 1;
+
+  // Pre-calculate grid positions for every card
+  const gridPos = {};
+  for (const cd of lvl.layout.tableau)
+    gridPos[`${cd.col},${cd.row}`] = getCardPos(cd.col, cd.row, grid, totalCols);
+
+  // Group by column into face-up / face-down buckets
+  const byCol = {};
+  for (const cd of lvl.layout.tableau) {
+    if (!byCol[cd.col]) byCol[cd.col] = { up: [], down: [] };
+    (cd.face_up ? byCol[cd.col].up : byCol[cd.col].down).push(cd);
+  }
+
+  const addCard = (cd, displayX, displayY, targetX, targetY) => {
+    const sprite = makeCardSprite(cd.code, cd.face_up);
+    sprite.alpha = 0; sprite.x = displayX; sprite.y = displayY;
+    const card = { code: cd.code, faceUp: cd.face_up, col: cd.col, row: cd.row,
+                   sprite, displayX, displayY, targetX, targetY, removed: false };
+    sprite.on('pointerdown', () => onCardTap(card));
+    tableauContainer.addChild(sprite);
+    state.tableau.push(card);
+  };
+
+  // Add face-down cards FIRST so they render behind face-up cards
+  for (const col in byCol) {
+    const { up, down } = byCol[col];
+    if (!down.length) continue;
+    const bottomUp = up.sort((a, b) => b.row - a.row)[0];
+    if (!bottomUp) continue;
+    const anchor = gridPos[`${bottomUp.col},${bottomUp.row}`];
+    // Deepest card added first (lowest z-order), each peeks PEEK px below previous
+    [...down].reverse().forEach((cd, i) => {
+      const peekIdx = down.length - 1 - i;
+      addCard(cd, anchor.x, anchor.y + PEEK * (peekIdx + 1), anchor.x, anchor.y);
+    });
+  }
+
+  // Add face-up cards on top
+  for (const cd of lvl.layout.tableau) {
+    if (!cd.face_up) continue;
+    const pos = gridPos[`${cd.col},${cd.row}`];
+    addCard(cd, pos.x, pos.y, pos.x, pos.y);
+  }
+
+  if (lvl.show_draw_pile && state.drawPile.length > 0) buildDrawPile();
+  if (CONFIG.levels.testing_mode) buildHUD();
+  runEnterAnimation(lvl);
+}
+
+function runEnterAnimation(lvl) {
+  const type = lvl.enter_animation, duration = lvl.enter_duration_ms;
+  // Bottom of screen first (highest displayY first)
+  const cards = [...state.tableau].sort((a, b) => b.displayY - a.displayY);
+  const stagger = Math.min((duration * 0.6) / cards.length, 160);
+  const flyDur  = Math.max(duration * 0.5, 280);
+  let pending = cards.length;
+  const onAllDone = () => { state.phase = 'playing'; state.animating = false; highlightValidMoves(); };
+  if (type === 'shuffle_in') {
+    cards.forEach((card, i) => {
+      delay(i * stagger, () => {
+        const angle = rand(0, Math.PI * 2);
+        card.sprite.x = card.displayX + Math.cos(angle) * 700;
+        card.sprite.y = card.displayY + Math.sin(angle) * 700;
+        card.sprite.alpha = 1;
+        tween(card.sprite, { x: card.displayX, y: card.displayY }, flyDur, Ease.easeOut, () => { pending--; if (!pending) onAllDone(); });
+      });
+    });
+  } else if (type === 'drop_down') {
+    cards.forEach((card, i) => {
+      card.sprite.x = card.displayX; card.sprite.y = card.displayY - STAGE_H - 80; card.sprite.alpha = 1;
+      delay(i * stagger, () => { tween(card.sprite, { y: card.displayY }, flyDur, Ease.bounce, () => { pending--; if (!pending) onAllDone(); }); });
+    });
+  } else if (type === 'bulk') {
+    cards.forEach(card => { card.sprite.y -= 180; card.sprite.alpha = 1; });
+    cards.forEach(card => { tween(card.sprite, { y: card.displayY }, duration, Ease.spring, () => { pending--; if (!pending) onAllDone(); }); });
+  } else {
+    cards.forEach(card => { card.sprite.alpha = 1; }); onAllDone();
+  }
+}
+
+function highlightValidMoves() {
+  if (!CONFIG.mechanics.highlight_valid_moves) return;
+  state.tableau.forEach(card => {
+    if (card.removed || !card.faceUp) { card.sprite.filters = []; return; }
+    card.sprite.filters = isValidMove(card.code, state.foundation) && glowFilter ? [glowFilter] : [];
+  });
+}
+function clearHighlights() { state.tableau.forEach(c => { if (c.sprite) c.sprite.filters = []; }); }
+
+function onCardTap(card) {
+  if (state.phase !== 'playing' || state.animating) return;
+  if (card.removed || !card.faceUp) return;
+  if (!isValidMove(card.code, state.foundation)) return;
+  state.animating = true; clearHighlights(); flyCardToFoundation(card);
+}
+function onDrawPileTap() {
+  if (state.phase !== 'playing' || state.animating) return;
+  if (!state.drawPile.length) return;
+  state.drawIndex = (state.drawIndex + 1) % state.drawPile.length;
+  const code = state.drawPile[state.drawIndex];
+  clearHighlights();
+  tween(foundationSprite, { alpha: 0 }, 120, Ease.linear, () => {
+    setFoundation(code); foundationSprite.alpha = 0;
+    tween(foundationSprite, { alpha: 1 }, 120, Ease.linear, highlightValidMoves);
+  });
+}
+
+function flyCardToFoundation(card) {
+  const speed = SPEEDS[CONFIG.mechanics.card_move_speed] || 350;
+  const animType = CONFIG.mechanics.animation_type;
+  const destX = STAGE_W / 2 - CARD_W / 2, destY = 560;
+  const wPos = card.sprite.getGlobalPosition();
+  tableauContainer.removeChild(card.sprite);
+  flyingCardLayer.addChild(card.sprite);
+  card.sprite.x = wPos.x; card.sprite.y = wPos.y;
+  card.removed = true;
+  const land = () => onCardLanded(card);
+  if (animType === 'instant') { card.sprite.x = destX; card.sprite.y = destY; land(); return; }
+  if (animType === 'flip') {
+    tween(card.sprite, { x: destX, y: destY }, speed * 0.55, Ease.easeIn, () => {
+      tween(card.sprite.scale, { x: 0 }, speed * 0.12, Ease.easeIn, () => {
+        tween(card.sprite.scale, { x: 1 }, speed * 0.12, Ease.easeOut, () => {
+          tween(card.sprite.scale, { y: 0.88 }, speed * 0.1, Ease.easeIn, () => {
+            tween(card.sprite.scale, { y: 1 }, speed * 0.2, Ease.spring, land);
+          });
+        });
+      });
+    });
+  } else {
+    tween(card.sprite, { x: destX, y: destY }, speed, Ease.easeOut, () => {
+      tween(card.sprite.scale, { x: 1.08, y: 0.92 }, speed * 0.1, Ease.easeIn, () => {
+        tween(card.sprite.scale, { x: 1, y: 1 }, speed * 0.18, Ease.spring, land);
+      });
+    });
+  }
+}
+function onCardLanded(card) {
+  flyingCardLayer.removeChild(card.sprite); setFoundation(card.code);
+  revealNextCard(card.col);
+  if (CONFIG.levels.testing_mode) buildHUD();
+  checkGameState();
+}
+
+function revealNextCard(col) {
+  const candidates = state.tableau.filter(c => !c.removed && !c.faceUp && c.col === col).sort((a, b) => a.row - b.row);
+  if (!candidates.length) return; flipFaceUp(candidates[0]);
+}
+function flipFaceUp(card) {
+  card.faceUp = true;
+  const doFlip = () => {
+    tween(card.sprite.scale, { x: 0 }, 130, Ease.easeIn, () => {
+      const ns = makeCardSprite(card.code, true);
+      ns.x = card.sprite.x; ns.y = card.sprite.y; ns.scale.x = 0;
+      ns.on('pointerdown', () => onCardTap(card));
+      tableauContainer.removeChild(card.sprite); card.sprite.destroy({ children: true });
+      card.sprite = ns; tableauContainer.addChild(ns);
+      tween(ns.scale, { x: 1 }, 130, Ease.easeOut);
+    });
+  };
+  // If card is at peek position, slide it up to target first
+  if (Math.abs(card.sprite.y - card.targetY) > 2) {
+    tween(card.sprite, { x: card.targetX, y: card.targetY }, 180, Ease.easeOut, doFlip);
+  } else {
+    doFlip();
+  }
+}
+
+function checkGameState() {
+  const remaining = state.tableau.filter(c => !c.removed);
+  if (!remaining.length) { delay(300, triggerWin); return; }
+  const hasMove = remaining.filter(c => c.faceUp).some(c => isValidMove(c.code, state.foundation));
+  if (!hasMove && !state.drawPile.length) { delay(400, triggerFail); return; }
+  state.animating = false; highlightValidMoves();
+}
+
+function triggerWin() {
+  state.phase = 'won'; clearHighlights(); spawnConfetti();
+  const lvl = CONFIG.levels.levels[state.levelIndex];
+  const isLast = state.levelIndex >= CONFIG.levels.total_levels - 1;
+  showWinOverlay(isLast);
+  delay(lvl.timings.win_screen_duration_ms, () => { clearOverlay(); isLast ? openCTA() : loadNextLevel(); });
+}
+function triggerFail() {
+  state.phase = 'failed'; clearHighlights(); shakeScreen(600, 8);
+  const lvl = CONFIG.levels.levels[state.levelIndex];
+  showFailOverlay();
+  delay(lvl.timings.fail_screen_duration_ms, () => { clearOverlay(); triggerEndCard(); });
+}
+function loadNextLevel() {
+  state.phase = 'transitioning'; state.animating = true;
+  const dur = CONFIG.levels.levels[state.levelIndex].timings.level_transition_duration_ms;
+  tween(tableauContainer, { alpha: 0 }, dur * 0.4, Ease.easeIn, () => { tableauContainer.alpha = 1; buildLevel(state.levelIndex + 1); });
+}
+
+const confetti = [];
+function spawnConfetti() {
+  for (let i = 0; i < 65; i++) {
+    const g = new PIXI.Graphics();
+    const color = CONFETTI_COLORS[Math.floor(Math.random() * CONFETTI_COLORS.length)];
+    g.beginFill(color); g.drawRect(0, 0, rand(4, 10), rand(4, 10)); g.endFill();
+    g.x = STAGE_W / 2 + rand(-70, 70); g.y = 560 + rand(-20, 20);
+    g.rotation = rand(0, Math.PI * 2);
+    g._vx = rand(-5, 5); g._vy = rand(-14, -5); g._vr = rand(-0.2, 0.2); g._grav = rand(0.25, 0.45);
+    overlayContainer.addChild(g); confetti.push(g);
+  }
+}
+function updateConfetti() {
+  for (let i = confetti.length - 1; i >= 0; i--) {
+    const p = confetti[i]; p._vy += p._grav; p.x += p._vx; p.y += p._vy; p.rotation += p._vr;
+    if (p.y > STAGE_H + 60) { overlayContainer.removeChild(p); confetti.splice(i, 1); }
+  }
+}
+function shakeScreen(duration, intensity) {
+  let elapsed = 0;
+  const tick = () => {
+    elapsed += app.ticker.deltaMS;
+    if (elapsed >= duration) { gameContainer.x = 0; gameContainer.y = 0; app.ticker.remove(tick); return; }
+    const amt = intensity * (1 - elapsed / duration);
+    gameContainer.x = (Math.random() * 2 - 1) * amt; gameContainer.y = (Math.random() * 2 - 1) * amt;
+  };
+  app.ticker.add(tick);
+}
+
+function clearOverlay() { overlayContainer.removeChildren(); confetti.length = 0; }
+function makePanel(yCenter, bgFill, borderColor) {
+  const o = new PIXI.Container();
+  const dim = new PIXI.Graphics(); dim.beginFill(0x000000, 0.55); dim.drawRect(0, 0, STAGE_W, STAGE_H); dim.endFill(); o.addChild(dim);
+  const panel = new PIXI.Graphics(); panel.beginFill(bgFill); panel.lineStyle(2, borderColor, 0.5);
+  panel.drawRoundedRect(STAGE_W / 2 - 150, yCenter - 110, 300, 220, 18); panel.endFill(); o.addChild(panel);
+  return o;
+}
+function showWinOverlay(isLast) {
+  const o = makePanel(STAGE_H / 2, hex(CONFIG.visual.table_felt_color), 0xffffff);
+  const title = new PIXI.Text(isLast ? 'You Win!' : 'Level Clear!', { fontFamily: 'Arial', fontSize: 38, fontWeight: 'bold', fill: 0xffffff, align: 'center' });
+  title.anchor.set(0.5); title.x = STAGE_W / 2; title.y = STAGE_H / 2 - 40; o.addChild(title);
+  const sub = new PIXI.Text(isLast ? 'All levels cleared!' : 'Get ready...', { fontFamily: 'Arial', fontSize: 17, fill: 0xffffff, align: 'center' });
+  sub.anchor.set(0.5); sub.x = STAGE_W / 2; sub.y = STAGE_H / 2 + 20; o.addChild(sub);
+  o.alpha = 0; tween(o, { alpha: 1 }, 300, Ease.easeOut);
+  overlayContainer.addChild(o); o.interactive = true;
+  if (isLast) o.on('pointerdown', openCTA);
+}
+function showFailOverlay() {
+  const o = makePanel(STAGE_H / 2, 0x660000, 0xff4444);
+  const title = new PIXI.Text('No More Moves', { fontFamily: 'Arial', fontSize: 32, fontWeight: 'bold', fill: 0xffffff, align: 'center' });
+  title.anchor.set(0.5); title.x = STAGE_W / 2; title.y = STAGE_H / 2 - 40; o.addChild(title);
+  const sub = new PIXI.Text('Try the full game!', { fontFamily: 'Arial', fontSize: 18, fill: 0xffffff, align: 'center' });
+  sub.anchor.set(0.5); sub.x = STAGE_W / 2; sub.y = STAGE_H / 2 + 20; o.addChild(sub);
+  o.alpha = 0; tween(o, { alpha: 1 }, 300, Ease.easeOut);
+  overlayContainer.addChild(o); o.interactive = true; o.on('pointerdown', openCTA);
+}
+function triggerEndCard() {
+  state.phase = 'end'; clearOverlay();
+  const o = new PIXI.Container();
+  const bg = new PIXI.Graphics(); bg.beginFill(hex(CONFIG.visual.background_color)); bg.drawRect(0, 0, STAGE_W, STAGE_H); bg.endFill(); o.addChild(bg);
+  const headline = new PIXI.Text('Play the full game!', { fontFamily: 'Arial', fontSize: 30, fontWeight: 'bold', fill: hex(CONFIG.visual.primary_text_color), align: 'center', wordWrap: true, wordWrapWidth: 320 });
+  headline.anchor.set(0.5); headline.x = STAGE_W / 2; headline.y = STAGE_H / 2 - 80; o.addChild(headline);
+  const btnW = 260, btnH = 66;
+  const btn = new PIXI.Graphics(); btn.beginFill(hex(CONFIG.visual.button_color)); btn.drawRoundedRect(0, 0, btnW, btnH, 33); btn.endFill();
+  btn.x = STAGE_W / 2 - btnW / 2; btn.y = STAGE_H / 2 + 20; btn.interactive = true; btn.buttonMode = true; o.addChild(btn);
+  const btnTxt = new PIXI.Text(CONFIG.levels.cta_text || 'Play Now!', { fontFamily: 'Arial', fontSize: 24, fontWeight: 'bold', fill: hex(CONFIG.visual.button_text_color) });
+  btnTxt.anchor.set(0.5); btnTxt.x = STAGE_W / 2; btnTxt.y = STAGE_H / 2 + 20 + btnH / 2; o.addChild(btnTxt);
+  o.alpha = 0; tween(o, { alpha: 1 }, 400, Ease.easeOut);
+  overlayContainer.addChild(o); btn.on('pointerdown', openCTA); o.interactive = true; o.on('pointerdown', openCTA);
+}
+
+function openCTA() {
+  const url = CONFIG.levels.target_url || 'https://example.com';
+  if (typeof mraid !== 'undefined' && typeof mraid.open === 'function') mraid.open(url);
+  else window.location.href = url;
+}
+
+app.ticker.add(() => { updateTweens(); updateGlow(); updateConfetti(); });
+
+drawBackground();
+initGlowFilter();
+buildLevel(0);
+</script>
+</body>
+</html>

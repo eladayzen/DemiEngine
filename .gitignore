@@ -1,0 +1,16 @@
+# Environment — NEVER commit this (contains API keys)
+.env
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+
+# Generated builds — can be large, reproducible from configs
+runs/
+
+# Editor / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
