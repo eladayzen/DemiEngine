@@ -274,6 +274,9 @@ function makeCardSprite(code, faceUp) {
 let glowFilter = null;
 let glowTime   = 0;
 
+const floatingCards = [];
+let floatTime = 0;
+
 function initGlowFilter() {
   if (PIXI.filters && PIXI.filters.GlowFilter) {
     glowFilter = new PIXI.filters.GlowFilter({
@@ -290,6 +293,26 @@ function updateGlow() {
   if (!glowFilter) return;
   glowTime += app.ticker.deltaMS * 0.004;
   glowFilter.outerStrength = 1.8 + Math.sin(glowTime) * 1.2;
+}
+
+function updateFloat() {
+  if (!floatingCards.length) return;
+  floatTime += app.ticker.deltaMS * 0.004;
+  floatingCards.forEach(card => {
+    card.sprite.y = card.targetY + Math.sin(floatTime + card._floatPhase) * 8;
+  });
+}
+
+function startFloating(card) {
+  card._floatPhase = Math.random() * Math.PI * 2;
+  if (!floatingCards.includes(card)) floatingCards.push(card);
+}
+
+function stopAllFloating() {
+  floatingCards.forEach(card => {
+    tween(card.sprite, { y: card.targetY }, 120, Ease.easeOut);
+  });
+  floatingCards.length = 0;
 }
 
 // ============================================================
@@ -546,16 +569,19 @@ function runEnterAnimation(lvl) {
 // HIGHLIGHTS
 // ============================================================
 function highlightValidMoves() {
+  stopAllFloating();
   if (!CONFIG.mechanics.highlight_valid_moves) return;
   state.tableau.forEach(card => {
     if (card.removed || !card.faceUp) { card.sprite.filters = []; return; }
-    card.sprite.filters = isValidMove(card.code, state.foundation) && glowFilter
-      ? [glowFilter] : [];
+    const valid = isValidMove(card.code, state.foundation);
+    card.sprite.filters = (valid && glowFilter) ? [glowFilter] : [];
+    if (valid) startFloating(card);
   });
 }
 
 function clearHighlights() {
   state.tableau.forEach(c => { if (c.sprite) c.sprite.filters = []; });
+  stopAllFloating();
 }
 
 // ============================================================
@@ -911,6 +937,7 @@ function initMRAID() {
 app.ticker.add(() => {
   updateTweens();
   updateGlow();
+  updateFloat();
   updateConfetti();
 });
 

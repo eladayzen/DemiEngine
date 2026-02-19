@@ -1,0 +1,14 @@
+  What you have right now:
+  - A locally-running tool that lets you configure solitaire playable ads                                                                                                            - A working PixiJS engine with 2-level default config, enter animations, win/fail flow
+  - A full config UI with dropdowns, color pickers, toggles
+  - Load previous builds, reset to defaults
+  - AI gameplay description — type what you want, Claude builds the level layout
+  - Generate → Preview → Download as a self-contained HTML ad
+
+  ---
+  Natural next things to work on (whenever you're ready):
+  - localStorage auto-save — don't lose configs on browser close
+  - Export / Import full config — one bundled JSON for sharing/archiving
+  - Engine polish — anything that's been bugging you when testing levels
+  - Creative description — wire up the "Describe the Creative" block (currently labelled "Future milestone")
+  - More game types — the game_type field per level is already in the schema, ready for a second engine
