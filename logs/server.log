@@ -466,3 +466,19 @@
 2026-02-20 12:29:19  INFO     POST /api/generate — validating configs
 2026-02-20 12:29:19  INFO     Embedded project assets into build: {'background': 'background.png', 'card_back': 'card_back.png', 'felt': 'felt.png'}
 2026-02-20 12:29:19  INFO     Build complete → build_20260220_122919  (bg_image=False, card_back_image=False, felt_image=False)
+2026-02-20 12:37:04  INFO     assets/list — returning 3 slots
+2026-02-20 12:37:06  INFO     POST /api/generate — validating configs
+2026-02-20 12:37:06  INFO     Embedded project assets into build: {'background': 'background.png', 'card_back': 'card_back.png', 'felt': 'felt.png'}
+2026-02-20 12:37:06  INFO     Build complete → build_20260220_123706  (bg_image=False, card_back_image=False, felt_image=False)
+2026-02-20 12:37:47  INFO     POST /api/visual/layout — level=0, has_drawing=False, annotations=False, nanobanana_ref=False, note='make all cards 15% bigger'
+2026-02-20 12:37:51  INFO     HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2026-02-20 12:37:51  INFO     visual/layout OK — foundation=7H, 5 tableau cards
+2026-02-20 12:38:10  INFO     POST /api/generate — validating configs
+2026-02-20 12:38:10  INFO     Embedded project assets into build: {'background': 'background.png', 'card_back': 'card_back.png', 'felt': 'felt.png'}
+2026-02-20 12:38:10  INFO     Build complete → build_20260220_123810  (bg_image=False, card_back_image=False, felt_image=False)
+2026-02-20 12:38:33  INFO     POST /api/generate — validating configs
+2026-02-20 12:38:33  INFO     Embedded project assets into build: {'background': 'background.png', 'card_back': 'card_back.png', 'felt': 'felt.png'}
+2026-02-20 12:38:33  INFO     Build complete → build_20260220_123833  (bg_image=False, card_back_image=False, felt_image=False)
+2026-02-20 12:39:12  INFO     POST /api/visual/layout — level=0, has_drawing=False, annotations=False, nanobanana_ref=False, note='move this card to red marked location'
+2026-02-20 12:39:18  INFO     HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2026-02-20 12:39:18  INFO     visual/layout OK — foundation=2H, 4 tableau cards

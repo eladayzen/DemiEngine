@@ -570,16 +570,64 @@
         </div>
       </div>
 
-      <!-- ── PATH A ── -->
+      <!-- ── PATH A — Positioning & Layout ── -->
       <div id="ve-path-a-form" style="display:none; margin-top:16px">
         <hr class="ve-divider">
-        <div class="ve-step-header"><span class="ve-step-num">3</span> Describe the layout change</div>
-        <div class="ve-label">Draw on the screenshot above, then add a note</div>
-        <textarea id="ve-text-note" style="width:100%;height:80px;resize:vertical;padding:8px;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:var(--radius);font-size:13px;box-sizing:border-box"
-          placeholder="Optional: describe what you want changed. E.g. 'Move the top row to 4 cards, spread them wider'"></textarea>
-        <div id="ve-a-status" class="ve-note" style="margin-top:6px"></div>
+        <div class="ve-step-header"><span class="ve-step-num">2</span> Describe the layout change</div>
+
+        <!-- Left-right layout: Text field (left) + Screenshot (right, optional) -->
+        <div style="display:flex; gap:16px; align-items:flex-start; margin-bottom:16px">
+
+          <!-- LEFT: Text description (always visible) -->
+          <div style="flex:1; min-width:300px">
+            <div class="ve-label">Describe what you want changed:</div>
+            <textarea id="ve-text-note" style="width:100%;height:200px;resize:vertical;padding:10px;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:var(--radius);font-size:13px;box-sizing:border-box;font-family:inherit"
+              placeholder="E.g. 'Move the top row to 4 cards, spread them wider' or 'Add a 3-card column on the left' or 'Remove the draw pile'"></textarea>
+            <p class="ve-note" style="margin-top:6px">You can submit text-only, or add a screenshot/drawing for more context.</p>
+          </div>
+
+          <!-- RIGHT: Screenshot upload + canvas (optional) -->
+          <div style="flex:1; min-width:300px">
+            <div class="ve-label">Optional: Add a screenshot</div>
+
+            <!-- Upload area (shown when no screenshot) -->
+            <div id="ve-a-drop-zone" class="ve-drop-zone" onclick="document.getElementById('ve-a-file-input').click()" style="margin-bottom:8px">
+              <p style="font-size:12px">Click or drag screenshot<br>(or use Capture button)</p>
+              <input type="file" id="ve-a-file-input" accept="image/*" style="display:none">
+            </div>
+
+            <!-- Canvas area (shown after upload) -->
+            <div id="ve-a-canvas-area" style="display:none">
+              <div class="ve-tools" style="margin-bottom:8px; font-size:11px">
+                <button class="ve-tool-btn active" id="ve-a-tool-pen" onclick="veSetTool('pen')">✏ Pen</button>
+                <button class="ve-tool-btn" id="ve-a-tool-arrow" onclick="veSetTool('arrow')">→ Arrow</button>
+                <button class="ve-tool-btn" id="ve-a-tool-rect" onclick="veSetTool('rect')">▭ Box</button>
+                <button class="ve-tool-btn" id="ve-a-tool-erase" onclick="veSetTool('erase')">⌫ Erase</button>
+                <button class="ve-tool-btn" onclick="veClearDrawing()">Clear</button>
+                <input type="color" id="ve-a-draw-color" value="#ff0000" style="width:24px;height:24px;border:none;padding:0;cursor:pointer;border-radius:3px">
+                <button class="ve-tool-btn primary" id="ve-a-save-drawing-btn" onclick="veSaveDrawing()" style="margin-left:auto; font-size:11px">💾 Save</button>
+              </div>
+              <div style="display:flex; gap:8px">
+                <div>
+                  <div class="ve-note" style="font-size:10px; margin-bottom:2px">Original</div>
+                  <div class="ve-canvas-wrap">
+                    <canvas id="ve-a-bg-canvas"></canvas>
+                    <canvas id="ve-a-draw-canvas" class="ve-draw-canvas"></canvas>
+                  </div>
+                </div>
+                <div id="ve-a-composite-wrap" style="display:none">
+                  <div class="ve-note" style="font-size:10px; margin-bottom:2px; color:#22c55e">✓ With marks</div>
+                  <img id="ve-a-composite-img" style="display:block; border-radius:4px; border:2px solid #22c55e; max-width:150px" />
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Submit button -->
+        <div id="ve-a-status" class="ve-note" style="margin-bottom:8px"></div>
         <button class="ve-apply-btn" id="ve-a-apply-btn" onclick="veApplyPathA()">Apply Layout Change to Level 1</button>
-        <p class="ve-note" style="margin-top:8px">This will call Claude Vision and update the form fields in the Levels tab.</p>
+        <p class="ve-note" style="margin-top:8px">Claude will analyze your description (and screenshot if provided) and update the level layout.</p>
 
         <!-- Claude's reasoning / result -->
         <div id="ve-a-result" style="display:none; margin-top:16px; padding:12px; background:var(--surface); border:1px solid var(--border); border-radius:var(--radius)">
@@ -1267,9 +1315,9 @@ function veCapturePreview() {
         veShowForm();
         veSelectPath('A');
 
-        // Auto-load the screenshot
+        // Auto-load the screenshot into Path A
         veScreenshotB64 = screenshotB64;
-        veSetupCanvases(dataUrl);
+        veSetupPathACanvases(dataUrl);
 
         // Success feedback
         setTimeout(function() {
@@ -1507,6 +1555,21 @@ function veResetForm() {
   document.getElementById('ve-path-b-form').style.display        = 'none';
   document.getElementById('ve-path-c-form').style.display        = 'none';
   document.getElementById('ve-a-result').style.display           = 'none';
+
+  // Reset Path A canvas area
+  var aDropZone = document.getElementById('ve-a-drop-zone');
+  var aCanvasArea = document.getElementById('ve-a-canvas-area');
+  if (aDropZone) aDropZone.style.display = 'block';
+  if (aCanvasArea) aCanvasArea.style.display = 'none';
+  var aCompWrap = document.getElementById('ve-a-composite-wrap');
+  if (aCompWrap) aCompWrap.style.display = 'none';
+  var aSaveBtn = document.getElementById('ve-a-save-drawing-btn');
+  if (aSaveBtn) {
+    aSaveBtn.textContent = '💾 Save';
+    aSaveBtn.style.background = '';
+    aSaveBtn.style.borderColor = '';
+    aSaveBtn.style.color = '';
+  }
   document.getElementById('ve-b-suggestions-step').style.display = 'none';
   document.getElementById('ve-b-variations-step').style.display  = 'none';
   document.getElementById('ve-b-assets-step').style.display      = 'none';
@@ -1633,8 +1696,24 @@ function veLoadRefIntoCanvas(dataUrlOrB64) {
 
 // ── Drawing tools ──────────────────────────────────────────
 function veSaveDrawing() {
-  var bgCvs = document.getElementById('ve-bg-canvas');
-  var drCvs = document.getElementById('ve-draw-canvas');
+  // Detect which path is active and use appropriate canvas IDs
+  var bgCvs, drCvs, compWrap, compImg, saveBtn;
+
+  if (veCurrentPath === 'A') {
+    bgCvs = document.getElementById('ve-a-bg-canvas');
+    drCvs = document.getElementById('ve-a-draw-canvas');
+    compWrap = document.getElementById('ve-a-composite-wrap');
+    compImg = document.getElementById('ve-a-composite-img');
+    saveBtn = document.getElementById('ve-a-save-drawing-btn');
+  } else {
+    // Path B uses old IDs
+    bgCvs = document.getElementById('ve-bg-canvas');
+    drCvs = document.getElementById('ve-draw-canvas');
+    compWrap = document.getElementById('ve-composite-wrap');
+    compImg = document.getElementById('ve-composite-img');
+    saveBtn = document.getElementById('ve-save-drawing-btn');
+  }
+
   if (!bgCvs || !drCvs) return;
 
   // Check drawing canvas has any marks
@@ -1648,7 +1727,7 @@ function veSaveDrawing() {
 
   // Composite: draw canvas on top of bg canvas → one merged image
   var merged = document.createElement('canvas');
-  merged.width  = bgCvs.width;
+  merged.width = bgCvs.width;
   merged.height = bgCvs.height;
   var ctx = merged.getContext('2d');
   ctx.drawImage(bgCvs, 0, 0);
@@ -1658,19 +1737,20 @@ function veSaveDrawing() {
   veCompositeB64 = dataUrl.split(',')[1];
 
   // Show composite preview at same display size as bg canvas
-  var compWrap = document.getElementById('ve-composite-wrap');
-  var compImg  = document.getElementById('ve-composite-img');
-  compImg.src = dataUrl;
-  compImg.style.width  = bgCvs.style.width;
-  compImg.style.height = bgCvs.style.height;
-  compWrap.style.display = 'block';
+  if (compWrap && compImg) {
+    compImg.src = dataUrl;
+    compImg.style.width = bgCvs.style.width;
+    compImg.style.height = bgCvs.style.height;
+    compWrap.style.display = 'block';
+  }
 
   // Visual feedback on button
-  var btn = document.getElementById('ve-save-drawing-btn');
-  btn.textContent = '✓ Drawing Saved';
-  btn.style.background = '#22c55e';
-  btn.style.borderColor = '#22c55e';
-  btn.style.color = '#fff';
+  if (saveBtn) {
+    saveBtn.textContent = '✓ Drawing Saved';
+    saveBtn.style.background = '#22c55e';
+    saveBtn.style.borderColor = '#22c55e';
+    saveBtn.style.color = '#fff';
+  }
 
   veLog('Drawing saved — composite ready to send to Claude');
 }
@@ -1764,55 +1844,135 @@ function veSelectPath(path) {
   document.querySelectorAll('.ve-path-btn').forEach(function(b) { b.classList.remove('selected'); });
   document.getElementById('ve-btn-' + path).classList.add('selected');
 
-  // Screenshot section: visible for A and B, hidden for C
-  document.getElementById('ve-screenshot-section').style.display = (path === 'C') ? 'none' : 'block';
+  // Screenshot section: visible for B only (Path A has its own upload, C doesn't need it)
+  document.getElementById('ve-screenshot-section').style.display = (path === 'B') ? 'block' : 'none';
 
-  // Path forms: A and B are revealed only after screenshot upload; C is shown immediately
+  // Path forms: A and C show immediately, B shows after screenshot
   document.getElementById('ve-path-a-form').style.display = 'none';
   document.getElementById('ve-path-b-form').style.display = 'none';
+  document.getElementById('ve-path-c-form').style.display = 'none';
 
-  if (path === 'C') {
+  if (path === 'A') {
+    document.getElementById('ve-path-a-form').style.display = 'block';
+    veWirePathAUpload();
+  } else if (path === 'C') {
     document.getElementById('ve-path-c-form').style.display = 'block';
     veCLoadAssets();
-  } else {
-    document.getElementById('ve-path-c-form').style.display = 'none';
-    // If a screenshot was already uploaded (path switch), show path form immediately
+  } else if (path === 'B') {
+    // Path B form shows after screenshot upload
     if (veScreenshotB64) {
-      if (path === 'A') document.getElementById('ve-path-a-form').style.display = 'block';
-      if (path === 'B') document.getElementById('ve-path-b-form').style.display = 'block';
+      document.getElementById('ve-path-b-form').style.display = 'block';
     }
   }
 }
 
+// ── PATH A — Upload handler ───────────────────────────────
+function veWirePathAUpload() {
+  var inp = document.getElementById('ve-a-file-input');
+  if (!inp) return;
+  // Remove old listeners by cloning
+  var newInp = inp.cloneNode(true);
+  inp.parentNode.replaceChild(newInp, inp);
+
+  newInp.addEventListener('change', function() {
+    var file = newInp.files && newInp.files[0];
+    if (file) veLoadPathAImage(file);
+  });
+
+  // Drag & drop on Path A drop zone
+  var dropZone = document.getElementById('ve-a-drop-zone');
+  if (!dropZone) return;
+
+  dropZone.addEventListener('dragover', function(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    this.style.borderColor = '#6366f1';
+  });
+
+  dropZone.addEventListener('dragleave', function(e) {
+    e.stopPropagation();
+    this.style.borderColor = '';
+  });
+
+  dropZone.addEventListener('drop', function(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    this.style.borderColor = '';
+    var file = e.dataTransfer.files && e.dataTransfer.files[0];
+    if (file && file.type.startsWith('image/')) {
+      veLoadPathAImage(file);
+    }
+  });
+}
+
+function veLoadPathAImage(file) {
+  var reader = new FileReader();
+  reader.onload = function(e) {
+    veScreenshotB64 = e.target.result.split(',')[1];
+    veSetupPathACanvases(e.target.result);
+  };
+  reader.readAsDataURL(file);
+}
+
+function veSetupPathACanvases(dataUrl) {
+  var bgCvs = document.getElementById('ve-a-bg-canvas');
+  var drCvs = document.getElementById('ve-a-draw-canvas');
+  var img = new Image();
+  img.onload = function() {
+    var w = img.naturalWidth, h = img.naturalHeight;
+    var maxH = 200;
+    var scale = Math.min(1, maxH / h);
+    var dw = Math.round(w * scale);
+    var dh = Math.round(h * scale);
+
+    bgCvs.width = drCvs.width = w;
+    bgCvs.height = drCvs.height = h;
+    bgCvs.style.width = drCvs.style.width = dw + 'px';
+    bgCvs.style.height = drCvs.style.height = dh + 'px';
+    bgCvs.getContext('2d').drawImage(img, 0, 0);
+    drCvs.getContext('2d').clearRect(0, 0, w, h);
+
+    document.getElementById('ve-a-drop-zone').style.display = 'none';
+    document.getElementById('ve-a-canvas-area').style.display = 'block';
+    veBindDrawEvents(drCvs);
+  };
+  img.src = dataUrl;
+}
+
 // ── PATH A — Apply layout ─────────────────────────────────
 function veApplyPathA() {
-  var btn    = document.getElementById('ve-a-apply-btn');
+  var btn = document.getElementById('ve-a-apply-btn');
   var status = document.getElementById('ve-a-status');
-  if (!veScreenshotB64) { status.textContent = 'Upload a screenshot first.'; return; }
-  btn.disabled    = true;
+  var note = document.getElementById('ve-text-note').value.trim();
+
+  // Require at least text OR screenshot
+  if (!note && !veScreenshotB64) {
+    status.textContent = 'Enter a text description or upload a screenshot.';
+    status.style.color = '';
+    return;
+  }
+
+  btn.disabled = true;
   btn.textContent = 'Asking Claude...';
   status.textContent = '';
 
-  // If user saved a drawing, send the composite (screenshot+drawing merged).
-  // Otherwise send the clean screenshot (text note only).
-  var screenshotToSend = veCompositeB64 || veScreenshotB64;
-  if (!veCompositeB64) {
-    var note = document.getElementById('ve-text-note').value.trim();
-    if (!note) {
-      btn.disabled = false; btn.textContent = 'Apply Layout Change to Level 1';
-      status.textContent = 'Add a drawing (click Save Drawing) or a text note before applying.';
-      return;
-    }
+  // Determine what to send
+  var screenshotToSend = null;
+  var hasDrawing = false;
+
+  if (veScreenshotB64) {
+    screenshotToSend = veCompositeB64 || veScreenshotB64;
+    hasDrawing = !!veCompositeB64;
   }
 
   var payload = {
-    screenshot:            screenshotToSend,
-    annotations:           null,
-    nanobanana_reference:  null,
-    has_drawing:           !!veCompositeB64,   // true = composite has baked-in marks
-    text_note:             document.getElementById('ve-text-note').value.trim() || null,
-    level_index:           0,
-    game_metadata:         veCapturedMetadata  // game state from Capture button
+    screenshot: screenshotToSend,
+    annotations: null,
+    nanobanana_reference: null,
+    has_drawing: hasDrawing,
+    text_note: note || null,
+    level_index: 0,
+    game_metadata: veCapturedMetadata
   };
 
   fetch('/api/visual/layout', {

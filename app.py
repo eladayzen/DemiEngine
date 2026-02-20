@@ -497,7 +497,7 @@ class GenerateImagesRequest(BaseModel):
 
 
 class VisualLayoutRequest(BaseModel):
-    screenshot: str                        # base64 — current build state (may have drawings baked in)
+    screenshot: Optional[str] = None       # base64 — current build state (optional for text-only requests)
     annotations: Optional[str] = None     # base64 — drawing layer (legacy separate field)
     nanobanana_reference: Optional[str] = None  # base64 — Nanobanana output
     text_note: Optional[str] = None
@@ -623,18 +623,20 @@ async def visual_layout(req: VisualLayoutRequest):  # noqa: F811
             "source": {"type": "base64", "media_type": "image/png", "data": data}
         })
 
-    # Label the screenshot — if it has drawings baked in, tell Claude explicitly
-    if req.has_drawing:
-        screenshot_label = (
-            "Current build screenshot WITH operator-drawn annotations baked in.\n"
-            "The colored marks drawn on this image are layout change instructions.\n"
-            "Carefully identify every mark (arrows, boxes, lines, X, circles) and their\n"
-            "positions relative to the cards and columns before generating the new layout."
-        )
-    else:
-        screenshot_label = "Current build screenshot (no annotations):"
+    # Add screenshot if provided
+    if req.screenshot:
+        # Label the screenshot — if it has drawings baked in, tell Claude explicitly
+        if req.has_drawing:
+            screenshot_label = (
+                "Current build screenshot WITH operator-drawn annotations baked in.\n"
+                "The colored marks drawn on this image are layout change instructions.\n"
+                "Carefully identify every mark (arrows, boxes, lines, X, circles) and their\n"
+                "positions relative to the cards and columns before generating the new layout."
+            )
+        else:
+            screenshot_label = "Current build screenshot (no annotations):"
 
-    _add_image(req.screenshot, screenshot_label)
+        _add_image(req.screenshot, screenshot_label)
 
     if req.nanobanana_reference:
         _add_image(req.nanobanana_reference, "Target reference image (what the operator wants it to look like):")
