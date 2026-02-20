@@ -683,14 +683,35 @@ async def visual_layout(req: VisualLayoutRequest):  # noqa: F811
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Claude API error: {e}")
 
+    # Extract text reasoning and tool result from Claude's response
     tool_result = None
+    reasoning_text = ""
+
     for block in response.content:
-        if block.type == "tool_use" and block.name == "generate_level_layout":
+        if block.type == "text":
+            reasoning_text += block.text + " "
+        elif block.type == "tool_use" and block.name == "generate_level_layout":
             tool_result = block.input
-            break
 
     if not tool_result:
         raise HTTPException(status_code=500, detail="AI did not return a layout. Try adding more detail.")
+
+    # Generate simple reasoning and complexity assessment
+    reasoning_simple = reasoning_text.strip() if reasoning_text.strip() else "I've analyzed your request and created a new layout accordingly."
+
+    # Assess complexity based on the layout changes
+    tableau = tool_result.get("tableau", [])
+    num_cards = len(tableau)
+    num_cols = max((c["col"] for c in tableau), default=0) + 1
+    draw_pile_count = len(tool_result.get("draw_pile", []))
+
+    # Simple heuristic for complexity
+    if num_cards <= 5 and num_cols <= 3 and draw_pile_count <= 3:
+        complexity = "easy"
+    elif num_cards >= 10 or num_cols >= 6 or draw_pile_count >= 8:
+        complexity = "risky"
+    else:
+        complexity = "moderate"
 
     tableau = tool_result.get("tableau", [])
     num_cols = max((c["col"] for c in tableau), default=0) + 1
@@ -716,6 +737,10 @@ async def visual_layout(req: VisualLayoutRequest):  # noqa: F811
                      "origin_x": layout.grid.origin_x, "origin_y": layout.grid.origin_y},
         },
         "solve_sequence": tool_result.get("solve_sequence", []),
+        "reasoning": {
+            "simple": reasoning_simple,
+            "complexity": complexity
+        }
     }
     log.info(f"visual/layout OK — foundation={layout.foundation_card}, {len(layout.tableau)} tableau cards")
     return result_payload

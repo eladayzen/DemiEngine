@@ -624,15 +624,51 @@
           </div>
         </div>
 
-        <!-- Submit button -->
-        <div id="ve-a-status" class="ve-note" style="margin-bottom:8px"></div>
-        <button class="ve-apply-btn" id="ve-a-apply-btn" onclick="veApplyPathA()">Apply Layout Change to Level 1</button>
-        <p class="ve-note" style="margin-top:8px">Claude will analyze your description (and screenshot if provided) and update the level layout.</p>
+        <!-- Step 3: Improve or Use As-Is -->
+        <hr class="ve-divider" style="margin:20px 0">
+        <div class="ve-step-header"><span class="ve-step-num">3</span> Submit your request</div>
+        <div style="display:flex; gap:10px; margin-bottom:8px">
+          <button class="ve-small-btn primary" id="ve-a-improve-btn" onclick="veImprovePathA()">✨ Improve My Prompt</button>
+          <button class="ve-small-btn" id="ve-a-skip-btn" onclick="veSkipImprovePathA()">Use As-Is → Apply Now</button>
+        </div>
+        <div id="ve-a-status" class="ve-note" style="margin-top:6px"></div>
 
-        <!-- Claude's reasoning / result -->
-        <div id="ve-a-result" style="display:none; margin-top:16px; padding:12px; background:var(--surface); border:1px solid var(--border); border-radius:var(--radius)">
-          <div style="font-size:12px; color:var(--muted); text-transform:uppercase; letter-spacing:1px; margin-bottom:8px; font-weight:600">✓ Claude's Output</div>
-          <div id="ve-a-result-content" style="font-size:13px; line-height:1.6"></div>
+        <!-- Improved prompt result (shown after clicking Improve) -->
+        <div id="ve-a-improved-section" style="display:none; margin-top:16px">
+          <hr class="ve-divider">
+          <div class="ve-step-header"><span class="ve-step-num">4</span> Improved Prompt</div>
+          <div style="margin-bottom:12px">
+            <div class="ve-label">Claude's suggestion:</div>
+            <div id="ve-a-improved-prompt" style="padding:12px; background:var(--bg); border:2px solid #22c55e; border-radius:var(--radius); font-size:14px; line-height:1.6; font-weight:500; margin-top:6px"></div>
+          </div>
+          <button class="ve-apply-btn" id="ve-a-apply-btn" onclick="veApplyPathA()">✓ Apply This Layout Change</button>
+        </div>
+
+        <!-- Reasoning from Claude (shown after clicking Apply) -->
+        <div id="ve-a-reasoning-section" style="display:none; margin-top:16px">
+          <hr class="ve-divider">
+          <div class="ve-step-header"><span class="ve-step-num">5</span> Claude's Analysis</div>
+
+          <!-- 1. Simple Explanation -->
+          <div style="margin-bottom:16px">
+            <div class="ve-label">📝 What Claude Understands:</div>
+            <div id="ve-a-reasoning-simple" style="padding:12px; background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); font-size:13px; line-height:1.6; margin-top:6px"></div>
+          </div>
+
+          <!-- 2. Complexity/Risk Label -->
+          <div style="margin-bottom:16px">
+            <div class="ve-label">Complexity Assessment:</div>
+            <div id="ve-a-reasoning-complexity" style="padding:10px 16px; border-radius:var(--radius); font-size:14px; font-weight:600; margin-top:6px; display:inline-block"></div>
+          </div>
+
+          <!-- 3. Technical Details -->
+          <div style="margin-bottom:16px">
+            <div class="ve-label">🔧 Technical Details:</div>
+            <div id="ve-a-reasoning-technical" style="padding:12px; background:var(--bg); border:1px solid var(--border); border-radius:var(--radius); font-size:12px; line-height:1.6; font-family:monospace; margin-top:6px"></div>
+          </div>
+
+          <!-- Approve Button -->
+          <button class="ve-apply-btn" id="ve-a-approve-btn" onclick="veApprovePathA()">✓ Approve & Add to Pending Requests</button>
         </div>
       </div>
 
@@ -1311,12 +1347,18 @@ function veCapturePreview() {
         document.querySelector('[data-tab="visual-editor"]').classList.add('active');
         document.getElementById('tab-visual-editor').classList.add('active');
 
-        // Open New Request form and select Path A
-        veShowForm();
-        veSelectPath('A');
+        // If form is already open and on Path A, just reload the screenshot
+        var formAlreadyOpen = document.getElementById('ve-form').style.display !== 'none' && veCurrentPath === 'A';
 
-        // Auto-load the screenshot into Path A
+        if (!formAlreadyOpen) {
+          // Open New Request form and select Path A
+          veShowForm();
+          veSelectPath('A');
+        }
+
+        // Auto-load the screenshot into Path A (clears any previous)
         veScreenshotB64 = screenshotB64;
+        veCompositeB64 = null; // Clear previous drawing
         veSetupPathACanvases(dataUrl);
 
         // Success feedback
@@ -1550,13 +1592,16 @@ function veResetForm() {
   document.getElementById('ve-composite-wrap').style.display     = 'none';
   var saveBtn = document.getElementById('ve-save-drawing-btn');
   if (saveBtn) { saveBtn.textContent = '💾 Save Drawing'; saveBtn.style.background = ''; saveBtn.style.borderColor = ''; saveBtn.style.color = ''; }
-  document.getElementById('ve-screenshot-section').style.display = 'none';
-  document.getElementById('ve-path-a-form').style.display        = 'none';
-  document.getElementById('ve-path-b-form').style.display        = 'none';
-  document.getElementById('ve-path-c-form').style.display        = 'none';
-  document.getElementById('ve-a-result').style.display           = 'none';
+  var screenshotSection = document.getElementById('ve-screenshot-section');
+  if (screenshotSection) screenshotSection.style.display = 'none';
+  var pathAForm = document.getElementById('ve-path-a-form');
+  if (pathAForm) pathAForm.style.display = 'none';
+  var pathBForm = document.getElementById('ve-path-b-form');
+  if (pathBForm) pathBForm.style.display = 'none';
+  var pathCForm = document.getElementById('ve-path-c-form');
+  if (pathCForm) pathCForm.style.display = 'none';
 
-  // Reset Path A canvas area
+  // Reset Path A canvas area and improved prompt
   var aDropZone = document.getElementById('ve-a-drop-zone');
   var aCanvasArea = document.getElementById('ve-a-canvas-area');
   if (aDropZone) aDropZone.style.display = 'block';
@@ -1570,19 +1615,50 @@ function veResetForm() {
     aSaveBtn.style.borderColor = '';
     aSaveBtn.style.color = '';
   }
-  document.getElementById('ve-b-suggestions-step').style.display = 'none';
-  document.getElementById('ve-b-variations-step').style.display  = 'none';
-  document.getElementById('ve-b-assets-step').style.display      = 'none';
-  document.getElementById('ve-c-prompt-section').style.display   = 'none';
-  document.getElementById('ve-c-preview-section').style.display  = 'none';
-  document.getElementById('ve-c-asset-picker').innerHTML         = '';
-  document.getElementById('ve-text-note').value     = '';
-  document.getElementById('ve-rough-prompt').value  = '';
-  document.getElementById('ve-a-status').textContent = '';
-  document.getElementById('ve-b-enhance-status').textContent = '';
-  document.getElementById('ve-b-gen-status').textContent = '';
-  document.getElementById('ve-c-gen-status').textContent = '';
-  document.getElementById('ve-c-approve-status').textContent = '';
+  var aImprovedSection = document.getElementById('ve-a-improved-section');
+  if (aImprovedSection) aImprovedSection.style.display = 'none';
+  var aReasoningSection = document.getElementById('ve-a-reasoning-section');
+  if (aReasoningSection) aReasoningSection.style.display = 'none';
+  var aStatus = document.getElementById('ve-a-status');
+  if (aStatus) {
+    aStatus.textContent = '';
+    aStatus.style.color = '';
+  }
+  veImprovedPromptA = null;
+  window.vePathAApprovalData = null;
+
+  // Reset Path B sections (with safety checks)
+  var bSuggestionsStep = document.getElementById('ve-b-suggestions-step');
+  if (bSuggestionsStep) bSuggestionsStep.style.display = 'none';
+  var bVariationsStep = document.getElementById('ve-b-variations-step');
+  if (bVariationsStep) bVariationsStep.style.display = 'none';
+  var bAssetsStep = document.getElementById('ve-b-assets-step');
+  if (bAssetsStep) bAssetsStep.style.display = 'none';
+
+  // Reset Path C sections (with safety checks)
+  var cPromptSection = document.getElementById('ve-c-prompt-section');
+  if (cPromptSection) cPromptSection.style.display = 'none';
+  var cPreviewSection = document.getElementById('ve-c-preview-section');
+  if (cPreviewSection) cPreviewSection.style.display = 'none';
+  var cAssetPicker = document.getElementById('ve-c-asset-picker');
+  if (cAssetPicker) cAssetPicker.innerHTML = '';
+
+  // Reset textareas and status fields (with safety checks)
+  var textNote = document.getElementById('ve-text-note');
+  if (textNote) textNote.value = '';
+  var roughPrompt = document.getElementById('ve-rough-prompt');
+  if (roughPrompt) roughPrompt.value = '';
+
+  var bEnhanceStatus = document.getElementById('ve-b-enhance-status');
+  if (bEnhanceStatus) bEnhanceStatus.textContent = '';
+  var bGenStatus = document.getElementById('ve-b-gen-status');
+  if (bGenStatus) bGenStatus.textContent = '';
+  var cGenStatus = document.getElementById('ve-c-gen-status');
+  if (cGenStatus) cGenStatus.textContent = '';
+  var cApproveStatus = document.getElementById('ve-c-approve-status');
+  if (cApproveStatus) cApproveStatus.textContent = '';
+
+  // Reset path button selection
   document.querySelectorAll('.ve-path-btn').forEach(function(b) { b.classList.remove('selected'); });
 }
 
@@ -1917,6 +1993,12 @@ function veLoadPathAImage(file) {
 function veSetupPathACanvases(dataUrl) {
   var bgCvs = document.getElementById('ve-a-bg-canvas');
   var drCvs = document.getElementById('ve-a-draw-canvas');
+
+  if (!bgCvs || !drCvs) {
+    console.error('Path A canvases not found');
+    return;
+  }
+
   var img = new Image();
   img.onload = function() {
     var w = img.naturalWidth, h = img.naturalHeight;
@@ -1932,11 +2014,96 @@ function veSetupPathACanvases(dataUrl) {
     bgCvs.getContext('2d').drawImage(img, 0, 0);
     drCvs.getContext('2d').clearRect(0, 0, w, h);
 
+    // Hide drop zone, show canvas area
     document.getElementById('ve-a-drop-zone').style.display = 'none';
     document.getElementById('ve-a-canvas-area').style.display = 'block';
+
+    // Hide composite wrap (from previous drawing)
+    var compWrap = document.getElementById('ve-a-composite-wrap');
+    if (compWrap) compWrap.style.display = 'none';
+
+    // Reset save button
+    var saveBtn = document.getElementById('ve-a-save-drawing-btn');
+    if (saveBtn) {
+      saveBtn.textContent = '💾 Save';
+      saveBtn.style.background = '';
+      saveBtn.style.borderColor = '';
+      saveBtn.style.color = '';
+    }
+
     veBindDrawEvents(drCvs);
   };
   img.src = dataUrl;
+}
+
+// ── PATH A — Improve prompt ────────────────────────────────
+var veImprovedPromptA = null;
+
+function veImprovePathA() {
+  var note = document.getElementById('ve-text-note').value.trim();
+  var status = document.getElementById('ve-a-status');
+
+  // Require at least text OR screenshot
+  if (!note && !veScreenshotB64) {
+    status.textContent = 'Enter a text description or upload a screenshot first.';
+    status.style.color = '';
+    return;
+  }
+
+  var improveBtn = document.getElementById('ve-a-improve-btn');
+  var skipBtn = document.getElementById('ve-a-skip-btn');
+
+  improveBtn.disabled = true;
+  skipBtn.disabled = true;
+  improveBtn.textContent = 'Thinking...';
+  status.textContent = 'Asking Claude to improve your prompt...';
+  status.style.color = '';
+
+  // Prepare payload (text + optional screenshot)
+  var screenshotToSend = null;
+  if (veScreenshotB64) {
+    screenshotToSend = veCompositeB64 || veScreenshotB64;
+  }
+
+  var payload = {
+    text_prompt: note,
+    screenshot: screenshotToSend,
+    has_drawing: !!veCompositeB64,
+    game_metadata: veCapturedMetadata
+  };
+
+  // TODO: Replace with real /api/visual/improve-prompt endpoint
+  // For now, simulate with timeout
+  setTimeout(function() {
+    // Simulated improved prompt
+    if (note) {
+      veImprovedPromptA = note + " — optimized for clarity: ensure cards are clearly visible, maintain proper spacing, and verify layout is solvable";
+    } else {
+      veImprovedPromptA = "Based on the screenshot: adjust card positions to improve playability, ensure all cards are accessible, and optimize the layout for better visual flow";
+    }
+
+    document.getElementById('ve-a-improved-prompt').textContent = veImprovedPromptA;
+    document.getElementById('ve-a-improved-section').style.display = 'block';
+
+    status.textContent = '✓ Prompt improved!';
+    status.style.color = '#22c55e';
+    improveBtn.disabled = false;
+    skipBtn.disabled = false;
+    improveBtn.textContent = '✨ Improve My Prompt';
+
+    // Scroll to result
+    document.getElementById('ve-a-improved-section').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }, 2000);
+}
+
+function veSkipImprovePathA() {
+  var note = document.getElementById('ve-text-note').value.trim();
+
+  // Skip improvement, use original prompt
+  veImprovedPromptA = note;
+
+  // Go straight to apply
+  veApplyPathA();
 }
 
 // ── PATH A — Apply layout ─────────────────────────────────
@@ -1945,15 +2112,18 @@ function veApplyPathA() {
   var status = document.getElementById('ve-a-status');
   var note = document.getElementById('ve-text-note').value.trim();
 
+  // Use improved prompt if available, otherwise original
+  var promptToUse = veImprovedPromptA || note;
+
   // Require at least text OR screenshot
-  if (!note && !veScreenshotB64) {
+  if (!promptToUse && !veScreenshotB64) {
     status.textContent = 'Enter a text description or upload a screenshot.';
     status.style.color = '';
     return;
   }
 
   btn.disabled = true;
-  btn.textContent = 'Asking Claude...';
+  btn.textContent = 'Applying...';
   status.textContent = '';
 
   // Determine what to send
@@ -1970,7 +2140,7 @@ function veApplyPathA() {
     annotations: null,
     nanobanana_reference: null,
     has_drawing: hasDrawing,
-    text_note: note || null,
+    text_note: promptToUse || null,
     level_index: 0,
     game_metadata: veCapturedMetadata
   };
@@ -2002,39 +2172,105 @@ function veApplyPathA() {
     } else {
       veLog('Warning: no level cards found in form — switch to Levels tab and add a level first');
     }
-    veAddPendingChange('A', veScreenshotB64, veCompositeB64 || null, data.solve_sequence ? 'Solve: ' + data.solve_sequence.join(' → ') : 'Layout updated');
-    status.textContent = 'Layout applied to Level 1! Check the Levels tab.';
+
+    // Store data for approval
+    window.vePathAApprovalData = {
+      layout: data.layout,
+      solve_sequence: data.solve_sequence,
+      reasoning: data.reasoning || {}
+    };
+
+    // Show reasoning section
+    var reasoning = data.reasoning || {};
+    var reasoningSimple = reasoning.simple || "I understand your request and will create a new layout based on your description.";
+    var reasoningComplexity = reasoning.complexity || "moderate";
+    var layout = data.layout;
+
+    // 1. Simple explanation
+    document.getElementById('ve-a-reasoning-simple').textContent = reasoningSimple;
+
+    // 2. Complexity label with color coding
+    var complexityEl = document.getElementById('ve-a-reasoning-complexity');
+    var complexityText = '';
+    var complexityColor = '';
+
+    if (reasoningComplexity === 'easy') {
+      complexityText = '⚡ Easy & Simple';
+      complexityColor = 'background:#22c55e; color:#fff';
+    } else if (reasoningComplexity === 'risky') {
+      complexityText = '🔴 Complicated & Risky';
+      complexityColor = 'background:#ef4444; color:#fff';
+    } else {
+      complexityText = '⚠️ Moderate';
+      complexityColor = 'background:#f59e0b; color:#fff';
+    }
+
+    complexityEl.textContent = complexityText;
+    complexityEl.style.cssText += complexityColor;
+
+    // 3. Technical details
+    var techHtml = '';
+    techHtml += 'Foundation: ' + layout.foundation_card + '\n';
+    techHtml += 'Tableau: ' + layout.tableau.length + ' cards in ' +
+            (Math.max.apply(null, layout.tableau.map(function(c) { return c.col; })) + 1) + ' columns\n';
+    if (layout.draw_pile && layout.draw_pile.length > 0) {
+      techHtml += 'Draw pile: ' + layout.draw_pile.length + ' cards\n';
+    }
+    techHtml += 'Grid: ' + layout.grid.cell_width + 'x' + layout.grid.cell_height + ', origin (' + layout.grid.origin_x + ', ' + layout.grid.origin_y + ')\n';
+    if (data.solve_sequence && data.solve_sequence.length > 0) {
+      techHtml += '\nSolve sequence: ' + data.solve_sequence.join(' → ');
+    }
+
+    document.getElementById('ve-a-reasoning-technical').textContent = techHtml;
+
+    // Show reasoning section, hide improved prompt section
+    document.getElementById('ve-a-improved-section').style.display = 'none';
+    document.getElementById('ve-a-reasoning-section').style.display = 'block';
+
+    status.textContent = '✓ Layout analyzed! Review the reasoning below.';
     status.style.color = '#22c55e';
 
-    // Show Claude's reasoning
-    var resultBox = document.getElementById('ve-a-result');
-    var resultContent = document.getElementById('ve-a-result-content');
-    var layout = data.layout;
-    var html = '';
-    html += '<div style="margin-bottom:8px"><strong>Foundation:</strong> ' + layout.foundation_card + '</div>';
-    html += '<div style="margin-bottom:8px"><strong>Tableau:</strong> ' + layout.tableau.length + ' cards in ' +
-            (Math.max.apply(null, layout.tableau.map(function(c) { return c.col; })) + 1) + ' columns</div>';
-    if (layout.draw_pile && layout.draw_pile.length > 0) {
-      html += '<div style="margin-bottom:8px"><strong>Draw pile:</strong> ' + layout.draw_pile.length + ' cards</div>';
-    }
-    if (data.solve_sequence && data.solve_sequence.length > 0) {
-      html += '<div style="margin-bottom:8px"><strong>Solve sequence:</strong><br><code style="font-size:11px;color:#79c0ff">' +
-              data.solve_sequence.join(' → ') + '</code></div>';
-    }
-    html += '<div style="font-size:11px; color:var(--muted); margin-top:12px">This layout was generated and applied to Level 1. Click Generate Ad to preview.</div>';
-    resultContent.innerHTML = html;
-    resultBox.style.display = 'block';
-
-    // Close form after brief delay
-    setTimeout(function() { veHideForm(); }, 2500);
+    // Scroll to reasoning
+    document.getElementById('ve-a-reasoning-section').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
   })
   .catch(function(err) {
     status.textContent = 'Error: ' + err.message;
+    status.style.color = '';
   })
   .finally(function() {
-    btn.disabled    = false;
-    btn.textContent = 'Apply Layout Change to Level 1';
+    btn.disabled = false;
+    btn.textContent = '✓ Apply This Layout Change';
   });
+}
+
+// ── PATH A — Approve and add to pending ───────────────────
+function veApprovePathA() {
+  if (!window.vePathAApprovalData) {
+    alert('No layout to approve. Please apply a change first.');
+    return;
+  }
+
+  var data = window.vePathAApprovalData;
+
+  // Add to pending changes
+  veAddPendingChange(
+    'A',
+    veScreenshotB64,
+    veCompositeB64 || null,
+    data.solve_sequence ? 'Solve: ' + data.solve_sequence.join(' → ') : 'Layout updated'
+  );
+
+  veLog('Path A approved and added to pending requests');
+
+  // Show success message
+  var status = document.getElementById('ve-a-status');
+  status.textContent = '✓ Added to Pending Requests!';
+  status.style.color = '#22c55e';
+
+  // Close form after brief delay
+  setTimeout(function() {
+    veHideForm();
+  }, 1500);
 }
 
 // ── PATH B — Prompt enhancement ───────────────────────────
