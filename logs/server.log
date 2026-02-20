@@ -823,3 +823,21 @@ h11._util.LocalProtocolError: can't handle event type Response when role=SERVER 
 2026-02-20 17:21:41  INFO     HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp-image-generation:generateContent "HTTP/1.1 200 OK"
 2026-02-20 17:21:42  INFO     nanobanana/generate OK — 1 images returned
 2026-02-20 17:21:42  INFO     Saved reference image: image_004.png
+2026-02-20 17:24:27  INFO     Listed 4 reference images
+2026-02-20 17:24:31  INFO     assets/list — returning 3 slots
+2026-02-20 17:24:32  INFO     POST /api/generate — validating configs
+2026-02-20 17:24:32  INFO     Embedded project assets into build: {'background': 'background.png', 'card_back': 'card_back.png', 'felt': 'felt.png'}
+2026-02-20 17:24:32  INFO     Build complete → build_20260220_172432  (bg_image=False, card_back_image=False, felt_image=False)
+2026-02-20 17:25:42  INFO     POST /api/visual/layout — level=0, has_drawing=False, annotations=False, nanobanana_ref=False, ref_images=1, note='change the whole app in the artistic style of this referance'
+2026-02-20 17:25:54  INFO     HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2026-02-20 17:25:54  INFO     visual/layout OK — foundation=3H, 8 tableau cards
+2026-02-20 17:26:15  INFO     POST /api/generate — validating configs
+2026-02-20 17:26:15  INFO     Embedded project assets into build: {'background': 'background.png', 'card_back': 'card_back.png', 'felt': 'felt.png'}
+2026-02-20 17:26:15  INFO     Build complete → build_20260220_172615  (bg_image=False, card_back_image=False, felt_image=False)
+2026-02-20 17:26:23  INFO     POST /api/generate — validating configs
+2026-02-20 17:26:23  INFO     Embedded project assets into build: {'background': 'background.png', 'card_back': 'card_back.png', 'felt': 'felt.png'}
+2026-02-20 17:26:23  INFO     Build complete → build_20260220_172623  (bg_image=False, card_back_image=False, felt_image=False)
+2026-02-20 17:26:43  INFO     Listed 4 reference images
+2026-02-20 17:26:47  INFO     POST /api/generate — validating configs
+2026-02-20 17:26:47  INFO     Embedded project assets into build: {'background': 'background.png', 'card_back': 'card_back.png', 'felt': 'felt.png'}
+2026-02-20 17:26:47  INFO     Build complete → build_20260220_172647  (bg_image=False, card_back_image=False, felt_image=False)

@@ -842,6 +842,12 @@
   </div>
 </div>
 
+<!-- IMAGE PREVIEW MODAL (Lightbox) -->
+<div id="ve-preview-modal" style="display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.95); z-index:10001; cursor:pointer; display:flex; align-items:center; justify-content:center" onclick="veCloseImagePreview()">
+  <button onclick="veCloseImagePreview()" style="position:absolute; top:20px; right:20px; width:50px; height:50px; border:none; background:rgba(255,255,255,0.2); color:#fff; font-size:30px; cursor:pointer; border-radius:50%; transition:background 0.2s; z-index:10002" onmouseover="this.style.background='rgba(255,255,255,0.3)'" onmouseout="this.style.background='rgba(255,255,255,0.2)'">✕</button>
+  <img id="ve-preview-image" src="" style="max-width:90%; max-height:90%; object-fit:contain; pointer-events:none">
+</div>
+
 <!-- IMAGE NANO BANANA MODAL -->
 <div id="ve-nano-modal" style="display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.8); z-index:10000; overflow:auto">
   <div style="max-width:700px; margin:80px auto; background:var(--bg); border-radius:var(--radius); padding:24px; box-shadow:0 20px 60px rgba(0,0,0,0.5)">
@@ -2682,6 +2688,19 @@ function veSaveEditedImage() {
   console.log('Saved edited image as new numbered image');
 }
 
+// ── IMAGE PREVIEW MODAL (Lightbox) ───────────────────────
+function veOpenImagePreview(dataUrl) {
+  var modal = document.getElementById('ve-preview-modal');
+  var img = document.getElementById('ve-preview-image');
+  img.src = dataUrl;
+  modal.style.display = 'flex';
+}
+
+function veCloseImagePreview() {
+  var modal = document.getElementById('ve-preview-modal');
+  modal.style.display = 'none';
+}
+
 // ── NANO BANANA MODAL ─────────────────────────────────────
 var veNanoBananaImageId = null;
 
@@ -2819,7 +2838,11 @@ function veRenderImageGallery() {
     // Image thumbnail
     var imgEl = document.createElement('img');
     imgEl.src = img.dataUrl;
-    imgEl.style.cssText = 'width:100%; height:120px; object-fit:cover; border-radius:4px; display:block; pointer-events:none';
+    imgEl.style.cssText = 'width:100%; height:120px; object-fit:cover; border-radius:4px; display:block; pointer-events:auto; cursor:zoom-in';
+    imgEl.ondblclick = function(e) {
+      e.stopPropagation(); // Prevent card click
+      veOpenImagePreview(img.dataUrl);
+    };
     card.appendChild(imgEl);
 
     // Edit button (top-left)
