@@ -841,3 +841,39 @@ h11._util.LocalProtocolError: can't handle event type Response when role=SERVER 
 2026-02-20 17:26:47  INFO     POST /api/generate — validating configs
 2026-02-20 17:26:47  INFO     Embedded project assets into build: {'background': 'background.png', 'card_back': 'card_back.png', 'felt': 'felt.png'}
 2026-02-20 17:26:47  INFO     Build complete → build_20260220_172647  (bg_image=False, card_back_image=False, felt_image=False)
+2026-02-20 17:27:35  INFO     assets/list — returning 3 slots
+2026-02-20 17:37:41  INFO     Listed 4 reference images
+2026-02-20 17:37:44  INFO     POST /api/generate — validating configs
+2026-02-20 17:37:44  INFO     Embedded project assets into build: {'background': 'background.png', 'card_back': 'card_back.png', 'felt': 'felt.png'}
+2026-02-20 17:37:44  INFO     Build complete → build_20260220_173744  (bg_image=False, card_back_image=False, felt_image=False)
+2026-02-20 17:37:51  INFO     assets/list — returning 3 slots
+2026-02-20 17:38:29  INFO     Listed 4 reference images
+2026-02-20 17:38:32  INFO     assets/list — returning 3 slots
+2026-02-20 17:41:19  INFO     Listed 4 reference images
+2026-02-20 17:41:20  INFO     Listed 4 reference images
+2026-02-20 17:41:22  INFO     Listed 4 reference images
+2026-02-20 17:41:26  INFO     POST /api/generate — validating configs
+2026-02-20 17:41:26  INFO     Embedded project assets into build: {'background': 'background.png', 'card_back': 'card_back.png', 'felt': 'felt.png'}
+2026-02-20 17:41:26  INFO     Build complete → build_20260220_174126  (bg_image=False, card_back_image=False, felt_image=False)
+2026-02-20 17:41:30  INFO     assets/list — returning 3 slots
+2026-02-20 17:41:44  INFO     Saved reference image: image_005.png
+2026-02-20 17:41:57  INFO     Saved reference image: image_006.png
+2026-02-20 17:42:07  INFO     Saved reference image: image_007.png
+2026-02-20 17:42:26  INFO     Saved reference image: image_008.png
+2026-02-20 18:33:20  INFO     assets/list — returning 3 slots
+2026-02-20 18:35:15  INFO     Saved reference image: image_009.png
+2026-02-20 18:35:16  INFO     Cleared all reference images (9 files)
+2026-02-20 18:37:28  INFO     Listed 0 reference images
+2026-02-20 18:37:30  INFO     POST /api/generate — validating configs
+2026-02-20 18:37:30  INFO     Embedded project assets into build: {'background': 'background.png', 'card_back': 'card_back.png', 'felt': 'felt.png'}
+2026-02-20 18:37:30  INFO     Build complete → build_20260220_183730  (bg_image=False, card_back_image=False, felt_image=False)
+2026-02-20 18:37:32  INFO     assets/list — returning 3 slots
+2026-02-20 18:37:51  INFO     assets/list — returning 3 slots
+2026-02-20 18:38:10  INFO     POST /api/assets/edit-preview — asset=felt, prompt='make this asset 100% transparent'
+2026-02-20 18:38:10  INFO     AFC is enabled with max remote calls: 10.
+2026-02-20 18:38:17  INFO     HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp-image-generation:generateContent "HTTP/1.1 200 OK"
+2026-02-20 18:38:18  INFO       Resizing from (666, 1024) -> (366, 560)
+2026-02-20 18:38:18  INFO     assets/edit-preview OK — asset=felt  366x560px
+2026-02-20 18:38:18  INFO     assets/list — returning 3 slots
+2026-02-20 18:38:22  INFO     Backed up felt.png -> history/felt_20260220_183822.png
+2026-02-20 18:38:22  INFO     assets/approve OK — saved felt.png  366x560px

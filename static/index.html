@@ -476,14 +476,11 @@
 
   <div class="tab-content" id="tab-visual-editor">
 
-    <!-- ── Asset Library ── -->
+    <!-- ── Applied Changes (grouped by build) ── -->
     <div class="ve-section">
-      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px">
-        <h2 style="margin:0">Project Assets</h2>
-        <button class="ve-small-btn" onclick="veRefreshAssetLibrary()">↻ Refresh</button>
-      </div>
-      <p class="ve-note" style="margin-bottom:10px">Current files in <code>static/assets/project/</code> — these are embedded in every Build.</p>
-      <div id="ve-library-grid" style="display:flex; gap:14px; flex-wrap:wrap"></div>
+      <h2 style="margin-bottom:12px">✓ Applied Changes</h2>
+      <div id="ve-applied-list"></div>
+      <p class="ve-note" id="ve-applied-empty">No builds yet. Pending changes will move here after a successful build.</p>
     </div>
 
     <!-- ── Pending Changes (to be built) ── -->
@@ -496,11 +493,15 @@
       <p class="ve-note" id="ve-pending-empty">No pending requests. Click "+ New Request" to start.</p>
     </div>
 
-    <!-- ── Applied Changes (grouped by build) ── -->
+    <!-- ── Build with changes ── -->
     <div class="ve-section">
-      <h2 style="margin-bottom:12px">✓ Applied Changes</h2>
-      <div id="ve-applied-list"></div>
-      <p class="ve-note" id="ve-applied-empty">No builds yet. Pending changes will move here after a successful build.</p>
+      <h2>Build</h2>
+      <p class="ve-note" style="margin-bottom:10px">Applied changes are automatically included when you click Generate Ad (footer button), or use the button below.</p>
+      <div id="ve-asset-preview" style="margin-bottom:12px; display:none">
+        <div class="ve-label">Stored image assets (will be embedded in next build):</div>
+        <div id="ve-asset-preview-items" style="display:flex; gap:10px; flex-wrap:wrap; margin-top:8px"></div>
+      </div>
+      <button class="ve-apply-btn" onclick="onGenerate()">Build Ad with All Changes</button>
     </div>
 
     <!-- ── New Request Form ── -->
@@ -519,7 +520,7 @@
             <div style="font-weight:600; margin-top:6px">Positioning &amp; Layout</div>
             <div style="font-size:12px; color:var(--muted); margin-top:4px">Move cards, change grid, resize areas</div>
           </button>
-          <button class="ve-path-btn" id="ve-btn-B" onclick="veSelectPath('B')">
+          <button class="ve-path-btn" id="ve-btn-B" onclick="veSelectPath('B')" style="display:none">
             <div style="font-size:22px">🎨</div>
             <div style="font-weight:600; margin-top:6px">Style from Reference</div>
             <div style="font-size:12px; color:var(--muted); margin-top:4px">Generate assets from a reference image</div>
@@ -777,15 +778,14 @@
 
     </div><!-- #ve-form -->
 
-    <!-- ── Build with changes ── -->
-    <div class="ve-section">
-      <h2>Build</h2>
-      <p class="ve-note" style="margin-bottom:10px">Applied changes are automatically included when you click Generate Ad (footer button), or use the button below.</p>
-      <div id="ve-asset-preview" style="margin-bottom:12px; display:none">
-        <div class="ve-label">Stored image assets (will be embedded in next build):</div>
-        <div id="ve-asset-preview-items" style="display:flex; gap:10px; flex-wrap:wrap; margin-top:8px"></div>
+    <!-- ── Asset Library ── HIDDEN FOR NOW -->
+    <div class="ve-section" style="display:none">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px">
+        <h2 style="margin:0">Project Assets</h2>
+        <button class="ve-small-btn" onclick="veRefreshAssetLibrary()">↻ Refresh</button>
       </div>
-      <button class="ve-apply-btn" onclick="onGenerate()">Build Ad with All Changes</button>
+      <p class="ve-note" style="margin-bottom:10px">Current files in <code>static/assets/project/</code> — these are embedded in every Build.</p>
+      <div id="ve-library-grid" style="display:flex; gap:14px; flex-wrap:wrap"></div>
     </div>
 
     <!-- ── Server Log ── -->
