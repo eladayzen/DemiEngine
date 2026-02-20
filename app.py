@@ -500,6 +500,7 @@ class VisualLayoutRequest(BaseModel):
     screenshot: Optional[str] = None       # base64 — current build state (optional for text-only requests)
     annotations: Optional[str] = None     # base64 — drawing layer (legacy separate field)
     nanobanana_reference: Optional[str] = None  # base64 — Nanobanana output
+    reference_images: Optional[list[str]] = None  # base64 list — @ImageXX referenced images
     text_note: Optional[str] = None
     has_drawing: bool = False              # True when screenshot contains user-drawn marks baked in
     level_index: int = 0
@@ -605,7 +606,8 @@ async def visual_layout(req: VisualLayoutRequest):  # noqa: F811
     """
     has_ann = bool(req.annotations)
     has_ref = bool(req.nanobanana_reference)
-    log.info(f"POST /api/visual/layout — level={req.level_index}, has_drawing={req.has_drawing}, annotations={has_ann}, nanobanana_ref={has_ref}, note={repr((req.text_note or '')[:60])}")
+    num_ref_images = len(req.reference_images) if req.reference_images else 0
+    log.info(f"POST /api/visual/layout — level={req.level_index}, has_drawing={req.has_drawing}, annotations={has_ann}, nanobanana_ref={has_ref}, ref_images={num_ref_images}, note={repr((req.text_note or '')[:60])}")
     api_key = os.getenv("ANTHROPIC_API_KEY")
     if not api_key:
         raise HTTPException(status_code=500, detail="ANTHROPIC_API_KEY not configured in .env")
@@ -643,6 +645,11 @@ async def visual_layout(req: VisualLayoutRequest):  # noqa: F811
 
     if req.annotations:
         _add_image(req.annotations, "Drawing annotations (operator drew on top of the screenshot/reference):")
+
+    # Add @ImageXX referenced images
+    if req.reference_images:
+        for idx, ref_img in enumerate(req.reference_images, 1):
+            _add_image(ref_img, f"Reference Image {idx:02d} (@Image{idx:02d} referenced in text):")
 
     if req.has_drawing and not req.text_note:
         instruction = (
@@ -752,6 +759,130 @@ async def visual_layout(req: VisualLayoutRequest):  # noqa: F811
     }
     log.info(f"visual/layout OK — foundation={layout.foundation_card}, {len(layout.tableau)} tableau cards")
     return result_payload
+
+
+# ── VISUAL EDITOR — Image Persistence ─────────────────────────────────────
+REFERENCES_DIR = STATIC_DIR / "assets" / "references"
+REFERENCES_DIR.mkdir(parents=True, exist_ok=True)
+
+
+class SaveImageRequest(BaseModel):
+    image_data: str  # base64 data URL
+    image_number: int  # The global counter number (1, 2, 3, etc.)
+
+
+@app.post("/api/visual/save-image")
+async def save_reference_image(req: SaveImageRequest):
+    """
+    Save a reference image to disk at static/assets/references/image_XXX.png
+    """
+    import base64
+
+    try:
+        # Extract base64 data (strip data URL prefix if present)
+        image_data = req.image_data
+        if "," in image_data:
+            image_data = image_data.split(",", 1)[1]
+
+        # Decode base64
+        image_bytes = base64.b64decode(image_data)
+
+        # Save to disk with zero-padded number
+        filename = f"image_{str(req.image_number).zfill(3)}.png"
+        filepath = REFERENCES_DIR / filename
+
+        with open(filepath, "wb") as f:
+            f.write(image_bytes)
+
+        log.info(f"Saved reference image: {filename}")
+
+        return {
+            "success": True,
+            "filename": filename,
+            "path": f"/static/assets/references/{filename}"
+        }
+
+    except Exception as e:
+        log.error(f"Error saving reference image: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/visual/list-images")
+async def list_reference_images():
+    """
+    List all saved reference images in static/assets/references/
+    Returns array of {number, filename, url}
+    """
+    try:
+        images = []
+
+        # Scan the references directory
+        if REFERENCES_DIR.exists():
+            for filepath in sorted(REFERENCES_DIR.glob("image_*.png")):
+                # Extract number from filename (image_001.png -> 1)
+                try:
+                    num_str = filepath.stem.split("_")[1]
+                    number = int(num_str)
+                    images.append({
+                        "number": number,
+                        "filename": filepath.name,
+                        "url": f"/static/assets/references/{filepath.name}"
+                    })
+                except (IndexError, ValueError):
+                    continue
+
+        log.info(f"Listed {len(images)} reference images")
+        return {"images": images}
+
+    except Exception as e:
+        log.error(f"Error listing reference images: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/visual/delete-image")
+async def delete_reference_image(req: dict):
+    """
+    Delete a reference image from disk
+    """
+    try:
+        image_number = req.get("image_number")
+        if image_number is None:
+            raise HTTPException(status_code=400, detail="image_number required")
+
+        filename = f"image_{str(image_number).zfill(3)}.png"
+        filepath = REFERENCES_DIR / filename
+
+        if filepath.exists():
+            filepath.unlink()
+            log.info(f"Deleted reference image: {filename}")
+            return {"success": True, "deleted": filename}
+        else:
+            return {"success": False, "error": "File not found"}
+
+    except Exception as e:
+        log.error(f"Error deleting reference image: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/visual/clear-all-images")
+async def clear_all_reference_images():
+    """
+    Delete all reference images from disk
+    """
+    try:
+        deleted_count = 0
+
+        if REFERENCES_DIR.exists():
+            for filepath in REFERENCES_DIR.glob("image_*.png"):
+                filepath.unlink()
+                deleted_count += 1
+
+        log.info(f"Cleared all reference images ({deleted_count} files)")
+        return {"success": True, "deleted_count": deleted_count}
+
+    except Exception as e:
+        log.error(f"Error clearing reference images: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @app.get("/api/assets/list")

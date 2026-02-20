@@ -583,7 +583,10 @@
             <div class="ve-label">Describe what you want changed:</div>
             <textarea id="ve-text-note" style="width:100%;height:200px;resize:vertical;padding:10px;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:var(--radius);font-size:13px;box-sizing:border-box;font-family:inherit"
               placeholder="E.g. 'Move the top row to 4 cards, spread them wider' or 'Add a 3-card column on the left' or 'Remove the draw pile'"></textarea>
-            <p class="ve-note" style="margin-top:6px">You can submit text-only, or add a screenshot/drawing for more context.</p>
+            <p class="ve-note" style="margin-top:6px">
+              You can submit text-only, or add a screenshot/drawing for more context.<br>
+              <strong>Tip:</strong> Reference specific gallery images with @Image01, @Image02, etc. in your text.
+            </p>
           </div>
 
           <!-- RIGHT: Image Gallery (Horizontal) -->
@@ -600,13 +603,15 @@
             </div>
 
             <!-- Upload button -->
-            <div style="margin-top:10px">
+            <div style="margin-top:10px; display:flex; gap:8px; align-items:center">
               <button class="ve-small-btn primary" onclick="veShowImageUpload()">+ Upload Image</button>
+              <button class="ve-small-btn" onclick="veClearAllImages()" style="background:var(--danger); color:#fff">Clear All</button>
               <input type="file" id="ve-a-file-input" accept="image/*" style="display:none" onchange="veHandleImageUpload(this)">
-              <p class="ve-note" style="margin-top:6px; font-size:11px">
-                Upload or drag & drop screenshots/reference images. The newest (rightmost) image is always included when you submit.
-              </p>
             </div>
+            <p class="ve-note" style="margin-top:6px; font-size:11px">
+              Upload or drag & drop screenshots/reference images. Click any image to make it ACTIVE (always sent to Claude).<br>
+              Reference other images in your text with @Image01, @Image02, etc. — only ACTIVE + @referenced images are sent.
+            </p>
           </div>
         </div>
 
@@ -803,6 +808,66 @@
 
   <span class="error-msg" id="error-msg"></span>
 </footer>
+
+<!-- IMAGE EDIT MODAL -->
+<div id="ve-edit-modal" style="display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.8); z-index:10000; overflow:auto">
+  <div style="max-width:900px; margin:40px auto; background:var(--bg); border-radius:var(--radius); padding:24px; box-shadow:0 20px 60px rgba(0,0,0,0.5)">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px">
+      <h3 style="margin:0; color:var(--text)">✏️ Draw on <span id="ve-edit-image-name">Image</span></h3>
+      <button class="ve-small-btn" onclick="veCancelEditImage()">Cancel</button>
+    </div>
+
+    <!-- Canvas Container -->
+    <div style="position:relative; display:inline-block; border:2px solid var(--border); border-radius:4px; background:#000">
+      <canvas id="ve-edit-bg-canvas" style="position:absolute; top:0; left:0"></canvas>
+      <canvas id="ve-edit-draw-canvas" style="position:relative"></canvas>
+    </div>
+
+    <!-- Drawing Tools -->
+    <div style="margin-top:16px; display:flex; gap:12px; align-items:center">
+      <label style="font-size:13px; color:var(--text)">
+        Color: <input type="color" id="ve-edit-color" value="#ff0000" style="margin-left:4px; width:40px; height:28px; border:none; cursor:pointer">
+      </label>
+      <label style="font-size:13px; color:var(--text)">
+        Size: <input type="range" id="ve-edit-size" min="1" max="20" value="3" style="width:100px; margin-left:4px">
+        <span id="ve-edit-size-val">3</span>px
+      </label>
+      <button class="ve-small-btn" onclick="veClearEditCanvas()">Clear Drawing</button>
+    </div>
+
+    <!-- Save Button -->
+    <div style="margin-top:20px; padding-top:16px; border-top:1px solid var(--border)">
+      <button class="ve-apply-btn" onclick="veSaveEditedImage()">💾 Save as New Image</button>
+    </div>
+  </div>
+</div>
+
+<!-- IMAGE NANO BANANA MODAL -->
+<div id="ve-nano-modal" style="display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.8); z-index:10000; overflow:auto">
+  <div style="max-width:700px; margin:80px auto; background:var(--bg); border-radius:var(--radius); padding:24px; box-shadow:0 20px 60px rgba(0,0,0,0.5)">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px">
+      <h3 style="margin:0; color:var(--text)">✨ AI Modify <span id="ve-nano-image-name">Image</span></h3>
+      <button class="ve-small-btn" onclick="veCancelNanoBanana()">Cancel</button>
+    </div>
+
+    <!-- Image Preview -->
+    <div style="text-align:center; margin-bottom:16px">
+      <img id="ve-nano-preview" src="" style="max-width:100%; max-height:300px; border:2px solid var(--border); border-radius:4px">
+    </div>
+
+    <!-- Prompt Input -->
+    <div style="margin-bottom:16px">
+      <label class="ve-label">What do you want to change?</label>
+      <textarea id="ve-nano-prompt" placeholder="e.g., Make the cards bigger, change the background to blue, add sparkles, etc." style="width:100%; min-height:100px; padding:10px; border:1px solid var(--border); border-radius:4px; background:var(--surface); color:var(--text); font-size:14px; font-family:inherit; resize:vertical"></textarea>
+    </div>
+
+    <!-- Status -->
+    <div id="ve-nano-status" class="ve-note" style="margin-bottom:12px; min-height:20px"></div>
+
+    <!-- Generate Button -->
+    <button class="ve-apply-btn" id="ve-nano-generate-btn" onclick="veSubmitNanoBananaEdit()">✨ Generate Modified Image</button>
+  </div>
+</div>
 
 <script>
 'use strict';
@@ -1511,6 +1576,7 @@ loadDefaults();
 populateBuildList();
 veRenderPending();
 veRenderApplied();
+veLoadImagesFromDisk(); // Load persisted reference images
 
 // ============================================================
 // VISUAL EDITOR - Remaining State
@@ -1521,6 +1587,7 @@ var veCompositeB64     = null;  // screenshot + drawing merged — sent to Claud
 var veCapturedMetadata = null;  // game state metadata from Capture button
 var vePathAImages      = [];    // Array of {id, dataUrl, name} for image gallery
 var veImageCounter     = 0;     // Global counter for image numbering
+var veActiveImageId    = null;  // ID of the currently active image in gallery
 var veChosenPrompt   = null;
 var veChosenRefB64   = null;
 var veEditAssetName  = null;  // Path C: which asset is being edited
@@ -1604,9 +1671,8 @@ function veResetForm() {
   veImprovedPromptA = null;
   window.vePathAApprovalData = null;
 
-  // Reset Path A image gallery
-  vePathAImages = [];
-  veRenderImageGallery();
+  // Note: We DON'T reset the image gallery — images persist across requests
+  // Images are global references that survive form open/close and page refresh
 
   // Reset Path B sections (with safety checks)
   var bSuggestionsStep = document.getElementById('ve-b-suggestions-step');
@@ -2092,6 +2158,47 @@ function veSkipImprovePathA() {
 }
 
 // ── PATH A — Apply layout ─────────────────────────────────
+// Parse @ImageXX references from text and gather images to send
+function veParseAndGatherImages(text) {
+  var imagesToSend = [];
+  var imageIds = new Set(); // Track IDs to avoid duplicates
+
+  // Always include the active image if one exists
+  if (veActiveImageId) {
+    var activeImg = vePathAImages.find(function(img) { return img.id === veActiveImageId; });
+    if (activeImg) {
+      imagesToSend.push(activeImg.dataUrl);
+      imageIds.add(veActiveImageId);
+    }
+  }
+
+  // Parse @ImageXX references from text
+  if (text) {
+    // Match @Image01, @Image02, etc. (case-insensitive)
+    var regex = /@Image(\d{2})/gi;
+    var matches = text.matchAll(regex);
+
+    for (var match of matches) {
+      var imageNum = parseInt(match[1], 10);
+
+      // Find the image with this number
+      var img = vePathAImages.find(function(i) {
+        // Extract number from "Image 01" -> 1
+        var numStr = i.name.replace('Image ', '');
+        return parseInt(numStr, 10) === imageNum;
+      });
+
+      // Add if found and not already included
+      if (img && !imageIds.has(img.id)) {
+        imagesToSend.push(img.dataUrl);
+        imageIds.add(img.id);
+      }
+    }
+  }
+
+  return imagesToSend;
+}
+
 function veApplyPathA() {
   var btn = document.getElementById('ve-a-apply-btn');
   var status = document.getElementById('ve-a-status');
@@ -2120,10 +2227,14 @@ function veApplyPathA() {
     hasDrawing = !!veCompositeB64;
   }
 
+  // Parse @ImageXX references and gather images to send
+  var referenceImages = veParseAndGatherImages(promptToUse);
+
   var payload = {
     screenshot: screenshotToSend,
     annotations: null,
     nanobanana_reference: null,
+    reference_images: referenceImages.length > 0 ? referenceImages : null,
     has_drawing: hasDrawing,
     text_note: promptToUse || null,
     level_index: 0,
@@ -2276,7 +2387,7 @@ function veHandleImageUpload(input) {
   input.value = '';
 }
 
-function veAddImageToGallery(dataUrl) {
+function veAddImageToGallery(dataUrl, skipSave) {
   veImageCounter++;
   var imageNum = String(veImageCounter).padStart(2, '0');
   var imageName = 'Image ' + imageNum;
@@ -2287,12 +2398,388 @@ function veAddImageToGallery(dataUrl) {
     name: imageName
   });
 
+  // Newly added image becomes active
+  veActiveImageId = veImageCounter;
+
+  // Save to disk (unless we're loading from disk)
+  if (!skipSave) {
+    veSaveImageToDisk(dataUrl, veImageCounter);
+  }
+
+  veRenderImageGallery();
+}
+
+function veSaveImageToDisk(dataUrl, imageNumber) {
+  fetch('/api/visual/save-image', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      image_data: dataUrl,
+      image_number: imageNumber
+    })
+  })
+  .then(function(res) { return res.json(); })
+  .then(function(data) {
+    console.log('Image saved to disk:', data.filename);
+  })
+  .catch(function(err) {
+    console.error('Failed to save image to disk:', err);
+  });
+}
+
+function veLoadImagesFromDisk() {
+  fetch('/api/visual/list-images')
+    .then(function(res) { return res.json(); })
+    .then(function(data) {
+      var images = data.images || [];
+      console.log('Loading ' + images.length + ' images from disk');
+
+      if (images.length === 0) {
+        veRenderImageGallery();
+        return;
+      }
+
+      // Set counter to highest existing number
+      var maxNumber = Math.max.apply(null, images.map(function(img) { return img.number; }));
+      veImageCounter = maxNumber;
+
+      // Load each image
+      images.forEach(function(img) {
+        // Fetch the image and convert to data URL
+        fetch(img.url)
+          .then(function(res) { return res.blob(); })
+          .then(function(blob) {
+            var reader = new FileReader();
+            reader.onload = function(e) {
+              var imageNum = String(img.number).padStart(2, '0');
+              var imageName = 'Image ' + imageNum;
+
+              vePathAImages.push({
+                id: img.number,
+                dataUrl: e.target.result,
+                name: imageName
+              });
+
+              // Make the highest numbered image active
+              if (img.number === maxNumber) {
+                veActiveImageId = img.number;
+              }
+
+              veRenderImageGallery();
+            };
+            reader.readAsDataURL(blob);
+          })
+          .catch(function(err) {
+            console.error('Failed to load image ' + img.filename + ':', err);
+          });
+      });
+    })
+    .catch(function(err) {
+      console.error('Failed to load images from disk:', err);
+      veRenderImageGallery(); // Render empty state
+    });
+}
+
+function veSetActiveImage(imageId) {
+  veActiveImageId = imageId;
   veRenderImageGallery();
 }
 
 function veRemoveImage(imageId) {
   vePathAImages = vePathAImages.filter(function(img) { return img.id !== imageId; });
+
+  // If we removed the active image, set a new active
+  if (veActiveImageId === imageId) {
+    if (vePathAImages.length > 0) {
+      // Make the last image active
+      veActiveImageId = vePathAImages[vePathAImages.length - 1].id;
+    } else {
+      veActiveImageId = null;
+    }
+  }
+
+  // Delete from disk
+  fetch('/api/visual/delete-image', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ image_number: imageId })
+  })
+  .then(function(res) { return res.json(); })
+  .then(function(data) {
+    console.log('Image deleted from disk:', data.deleted);
+  })
+  .catch(function(err) {
+    console.error('Failed to delete image from disk:', err);
+  });
+
   veRenderImageGallery();
+}
+
+function veClearAllImages() {
+  if (!confirm('Delete ALL reference images?\n\nThis will permanently delete all images from disk and reset the gallery.')) {
+    return;
+  }
+
+  // Clear from disk
+  fetch('/api/visual/clear-all-images', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' }
+  })
+  .then(function(res) { return res.json(); })
+  .then(function(data) {
+    console.log('Cleared all images:', data.deleted_count + ' files deleted');
+
+    // Clear local state
+    vePathAImages = [];
+    veActiveImageId = null;
+    veImageCounter = 0;
+
+    veRenderImageGallery();
+  })
+  .catch(function(err) {
+    console.error('Failed to clear images:', err);
+    alert('Error clearing images. Check console for details.');
+  });
+}
+
+// ── IMAGE EDIT MODAL ──────────────────────────────────────
+var veEditingImageId = null;
+
+function veEditImage(imageId) {
+  // Find the image
+  var img = vePathAImages.find(function(i) { return i.id === imageId; });
+  if (!img) return;
+
+  veEditingImageId = imageId;
+
+  // Show modal
+  var modal = document.getElementById('ve-edit-modal');
+  modal.style.display = 'block';
+
+  // Update title
+  document.getElementById('ve-edit-image-name').textContent = img.name;
+
+  // Set up canvas
+  var bgCanvas = document.getElementById('ve-edit-bg-canvas');
+  var drawCanvas = document.getElementById('ve-edit-draw-canvas');
+
+  var tempImg = new Image();
+  tempImg.onload = function() {
+    // Size canvases to match image
+    var width = tempImg.width;
+    var height = tempImg.height;
+
+    bgCanvas.width = width;
+    bgCanvas.height = height;
+    drawCanvas.width = width;
+    drawCanvas.height = height;
+
+    // Draw background image
+    var bgCtx = bgCanvas.getContext('2d');
+    bgCtx.drawImage(tempImg, 0, 0);
+
+    // Clear drawing canvas
+    var drawCtx = drawCanvas.getContext('2d');
+    drawCtx.clearRect(0, 0, width, height);
+
+    // Bind drawing events
+    veBindEditDrawEvents(drawCanvas);
+  };
+  tempImg.src = img.dataUrl;
+}
+
+function veBindEditDrawEvents(canvas) {
+  var ctx = canvas.getContext('2d');
+  var drawing = false;
+  var lastX = 0;
+  var lastY = 0;
+
+  // Get color and size inputs
+  var colorInput = document.getElementById('ve-edit-color');
+  var sizeInput = document.getElementById('ve-edit-size');
+  var sizeVal = document.getElementById('ve-edit-size-val');
+
+  // Update size display
+  sizeInput.oninput = function() {
+    sizeVal.textContent = this.value;
+  };
+
+  function getMousePos(e) {
+    var rect = canvas.getBoundingClientRect();
+    return {
+      x: (e.clientX - rect.left) * (canvas.width / rect.width),
+      y: (e.clientY - rect.top) * (canvas.height / rect.height)
+    };
+  }
+
+  canvas.onmousedown = function(e) {
+    drawing = true;
+    var pos = getMousePos(e);
+    lastX = pos.x;
+    lastY = pos.y;
+  };
+
+  canvas.onmousemove = function(e) {
+    if (!drawing) return;
+    var pos = getMousePos(e);
+
+    ctx.strokeStyle = colorInput.value;
+    ctx.lineWidth = parseInt(sizeInput.value);
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+
+    ctx.beginPath();
+    ctx.moveTo(lastX, lastY);
+    ctx.lineTo(pos.x, pos.y);
+    ctx.stroke();
+
+    lastX = pos.x;
+    lastY = pos.y;
+  };
+
+  canvas.onmouseup = function() {
+    drawing = false;
+  };
+
+  canvas.onmouseleave = function() {
+    drawing = false;
+  };
+}
+
+function veClearEditCanvas() {
+  var canvas = document.getElementById('ve-edit-draw-canvas');
+  var ctx = canvas.getContext('2d');
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+}
+
+function veCancelEditImage() {
+  document.getElementById('ve-edit-modal').style.display = 'none';
+  veEditingImageId = null;
+}
+
+function veSaveEditedImage() {
+  // Merge background and drawing
+  var bgCanvas = document.getElementById('ve-edit-bg-canvas');
+  var drawCanvas = document.getElementById('ve-edit-draw-canvas');
+
+  var mergedCanvas = document.createElement('canvas');
+  mergedCanvas.width = bgCanvas.width;
+  mergedCanvas.height = bgCanvas.height;
+
+  var ctx = mergedCanvas.getContext('2d');
+  ctx.drawImage(bgCanvas, 0, 0);
+  ctx.drawImage(drawCanvas, 0, 0);
+
+  // Convert to data URL
+  var dataUrl = mergedCanvas.toDataURL('image/png');
+
+  // Add to gallery as new image
+  veAddImageToGallery(dataUrl);
+
+  // Close modal
+  veCancelEditImage();
+
+  console.log('Saved edited image as new numbered image');
+}
+
+// ── NANO BANANA MODAL ─────────────────────────────────────
+var veNanoBananaImageId = null;
+
+function veNanoBananaImage(imageId) {
+  // Find the image
+  var img = vePathAImages.find(function(i) { return i.id === imageId; });
+  if (!img) return;
+
+  veNanoBananaImageId = imageId;
+
+  // Show modal
+  var modal = document.getElementById('ve-nano-modal');
+  modal.style.display = 'block';
+
+  // Update title and preview
+  document.getElementById('ve-nano-image-name').textContent = img.name;
+  document.getElementById('ve-nano-preview').src = img.dataUrl;
+
+  // Clear prompt and status
+  document.getElementById('ve-nano-prompt').value = '';
+  document.getElementById('ve-nano-status').textContent = '';
+}
+
+function veCancelNanoBanana() {
+  document.getElementById('ve-nano-modal').style.display = 'none';
+  veNanoBananaImageId = null;
+}
+
+function veSubmitNanoBananaEdit() {
+  var prompt = document.getElementById('ve-nano-prompt').value.trim();
+  if (!prompt) {
+    alert('Please describe what you want to change');
+    return;
+  }
+
+  // Find the source image
+  var img = vePathAImages.find(function(i) { return i.id === veNanoBananaImageId; });
+  if (!img) return;
+
+  var statusEl = document.getElementById('ve-nano-status');
+  var generateBtn = document.getElementById('ve-nano-generate-btn');
+
+  statusEl.textContent = '✨ Generating modified image...';
+  statusEl.style.color = 'var(--primary)';
+  generateBtn.disabled = true;
+  generateBtn.textContent = 'Generating...';
+
+  // Call Nano Banana API
+  fetch('/api/nanobanana/generate', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      prompt: prompt,
+      reference_image: img.dataUrl,
+      num_variations: 1
+    })
+  })
+  .then(function(res) {
+    if (!res.ok) {
+      return res.json().then(function(err) {
+        throw new Error(err.detail || 'API error');
+      });
+    }
+    return res.json();
+  })
+  .then(function(data) {
+    statusEl.textContent = '✅ Generated! Adding to gallery...';
+    statusEl.style.color = 'var(--success)';
+
+    // Add to gallery as new image (API returns {images: [raw base64, ...]})
+    var newImageData = data.images && data.images[0];
+    if (newImageData) {
+      // Convert raw base64 to data URL if needed
+      if (!newImageData.startsWith('data:')) {
+        newImageData = 'data:image/png;base64,' + newImageData;
+      }
+      veAddImageToGallery(newImageData);
+    } else {
+      throw new Error('No image data returned from API');
+    }
+
+    // Close modal after brief delay
+    setTimeout(function() {
+      veCancelNanoBanana();
+      statusEl.textContent = '';
+      generateBtn.disabled = false;
+      generateBtn.textContent = '✨ Generate Modified Image';
+    }, 1500);
+
+    console.log('Nano Banana generated new image from prompt:', prompt);
+  })
+  .catch(function(err) {
+    statusEl.textContent = '❌ Error: ' + err.message;
+    statusEl.style.color = 'var(--danger)';
+    generateBtn.disabled = false;
+    generateBtn.textContent = '✨ Generate Modified Image';
+    console.error('Nano Banana error:', err);
+  });
 }
 
 function veRenderImageGallery() {
@@ -2307,43 +2794,76 @@ function veRenderImageGallery() {
   }
 
   vePathAImages.forEach(function(img, index) {
-    var isNewest = (index === vePathAImages.length - 1);
+    var isActive = (img.id === veActiveImageId);
 
     var card = document.createElement('div');
     card.style.cssText = 'position:relative; flex-shrink:0; width:120px; padding:8px; border:2px solid ' +
-      (isNewest ? '#6366f1' : 'var(--border)') +
+      (isActive ? '#6366f1' : 'var(--border)') +
       '; border-radius:var(--radius); background:var(--surface)' +
-      (isNewest ? '; box-shadow:0 0 12px rgba(99,102,241,0.5)' : '');
+      (isActive ? '; box-shadow:0 0 12px rgba(99,102,241,0.5)' : '') +
+      '; cursor:pointer; transition:all 0.2s';
+
+    // Click to make active
+    card.onclick = function(e) {
+      // Don't trigger if clicking remove button
+      if (e.target.textContent === '✕') return;
+      veSetActiveImage(img.id);
+    };
 
     // Image number
     var numLabel = document.createElement('div');
     numLabel.textContent = img.name;
-    numLabel.style.cssText = 'font-size:11px; font-weight:600; margin-bottom:6px; color:' + (isNewest ? '#6366f1' : 'var(--text)');
+    numLabel.style.cssText = 'font-size:11px; font-weight:600; margin-bottom:6px; color:' + (isActive ? '#6366f1' : 'var(--text)');
     card.appendChild(numLabel);
 
     // Image thumbnail
     var imgEl = document.createElement('img');
     imgEl.src = img.dataUrl;
-    imgEl.style.cssText = 'width:100%; height:120px; object-fit:cover; border-radius:4px; display:block';
+    imgEl.style.cssText = 'width:100%; height:120px; object-fit:cover; border-radius:4px; display:block; pointer-events:none';
     card.appendChild(imgEl);
 
-    // Remove button
+    // Edit button (top-left)
+    var editBtn = document.createElement('button');
+    editBtn.textContent = '✏️';
+    editBtn.className = 've-tool-btn';
+    editBtn.style.cssText = 'position:absolute; top:4px; left:4px; width:24px; height:24px; padding:0; font-size:14px; background:var(--bg); opacity:0.8';
+    editBtn.title = 'Draw on this image';
+    editBtn.onclick = function(e) {
+      e.stopPropagation(); // Prevent card click
+      veEditImage(img.id);
+    };
+    card.appendChild(editBtn);
+
+    // Magic button (bottom-left, next to Edit)
+    var magicBtn = document.createElement('button');
+    magicBtn.textContent = '✨';
+    magicBtn.className = 've-tool-btn';
+    magicBtn.style.cssText = 'position:absolute; top:32px; left:4px; width:24px; height:24px; padding:0; font-size:14px; background:var(--bg); opacity:0.8';
+    magicBtn.title = 'AI modify this image';
+    magicBtn.onclick = function(e) {
+      e.stopPropagation(); // Prevent card click
+      veNanoBananaImage(img.id);
+    };
+    card.appendChild(magicBtn);
+
+    // Remove button (top-right)
     var removeBtn = document.createElement('button');
     removeBtn.textContent = '✕';
     removeBtn.className = 've-tool-btn';
     removeBtn.style.cssText = 'position:absolute; top:4px; right:4px; width:24px; height:24px; padding:0; font-size:14px; background:var(--bg); opacity:0.8';
-    removeBtn.onclick = function() {
+    removeBtn.onclick = function(e) {
+      e.stopPropagation(); // Prevent card click
       if (confirm('Remove ' + img.name + '?')) {
         veRemoveImage(img.id);
       }
     };
     card.appendChild(removeBtn);
 
-    // Newest indicator
-    if (isNewest) {
+    // Active indicator
+    if (isActive) {
       var badge = document.createElement('div');
       badge.textContent = 'ACTIVE';
-      badge.style.cssText = 'position:absolute; bottom:8px; left:8px; right:8px; background:#6366f1; color:#fff; font-size:9px; font-weight:700; text-align:center; padding:3px; border-radius:3px';
+      badge.style.cssText = 'position:absolute; bottom:8px; left:8px; right:8px; background:#6366f1; color:#fff; font-size:9px; font-weight:700; text-align:center; padding:3px; border-radius:3px; pointer-events:none';
       card.appendChild(badge);
     }
 
