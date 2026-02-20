@@ -489,11 +489,11 @@
     <!-- ── Pending Changes (to be built) ── -->
     <div class="ve-section">
       <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px">
-        <h2 style="margin:0">📋 Pending Changes</h2>
-        <button class="ve-small-btn primary" onclick="veShowForm()">+ New Change</button>
+        <h2 style="margin:0">📋 Pending Requests</h2>
+        <button class="ve-small-btn primary" onclick="veShowForm()">+ New Request</button>
       </div>
       <ul class="ve-history" id="ve-pending-list"></ul>
-      <p class="ve-note" id="ve-pending-empty">No pending changes. Click "+ New Change" to start.</p>
+      <p class="ve-note" id="ve-pending-empty">No pending requests. Click "+ New Request" to start.</p>
     </div>
 
     <!-- ── Applied Changes (grouped by build) ── -->
@@ -503,10 +503,10 @@
       <p class="ve-note" id="ve-applied-empty">No builds yet. Pending changes will move here after a successful build.</p>
     </div>
 
-    <!-- ── New Change Form ── -->
+    <!-- ── New Request Form ── -->
     <div class="ve-section" id="ve-form" style="display:none">
       <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px">
-        <h2 style="margin:0">New Change</h2>
+        <h2 style="margin:0">New Request</h2>
         <button class="ve-tool-btn" onclick="veHideForm()">✕ Cancel</button>
       </div>
 
@@ -1235,7 +1235,7 @@ function veCapturePreview() {
           document.querySelector('[data-tab="visual-editor"]').classList.add('active');
           document.getElementById('tab-visual-editor').classList.add('active');
           veShowForm();
-          veSelectPath('B');
+          veSelectPath('A');
           return;
         }
 
@@ -1247,9 +1247,9 @@ function veCapturePreview() {
         document.querySelector('[data-tab="visual-editor"]').classList.add('active');
         document.getElementById('tab-visual-editor').classList.add('active');
 
-        // Open New Change form and select Path B
+        // Open New Request form and select Path A
         veShowForm();
-        veSelectPath('B');
+        veSelectPath('A');
 
         // Auto-load the screenshot
         veScreenshotB64 = screenshotB64;
@@ -1416,6 +1416,13 @@ document.getElementById('reset-defaults-btn').addEventListener('click', function
 });
 
 // ============================================================
+// VISUAL EDITOR - State (must be declared before INIT)
+// ============================================================
+var veImageAssets     = {};  // { background: base64, card_back: base64, felt: base64 }
+var vePendingChanges  = [];  // changes not yet built (can be deleted)
+var veAppliedChanges  = [];  // grouped by build: [{run_id, run_name, changes: [...]}]
+
+// ============================================================
 // INIT
 // ============================================================
 buildColorFields();
@@ -1425,13 +1432,8 @@ veRenderPending();
 veRenderApplied();
 
 // ============================================================
-// VISUAL EDITOR
+// VISUAL EDITOR - Remaining State
 // ============================================================
-
-// ── State ──────────────────────────────────────────────────
-var veImageAssets     = {};  // { background: base64, card_back: base64, felt: base64 }
-var vePendingChanges  = [];  // changes not yet built (can be deleted)
-var veAppliedChanges  = [];  // grouped by build: [{run_id, run_name, changes: [...]}]
 var veCurrentPath     = null;
 var veScreenshotB64  = null;
 var veCompositeB64   = null;  // screenshot + drawing merged — sent to Claude
@@ -1823,6 +1825,7 @@ function veApplyPathA() {
     }
     veAddPendingChange('A', veScreenshotB64, veCompositeB64 || null, data.solve_sequence ? 'Solve: ' + data.solve_sequence.join(' → ') : 'Layout updated');
     status.textContent = 'Layout applied to Level 1! Check the Levels tab.';
+    status.style.color = '#22c55e';
 
     // Show Claude's reasoning
     var resultBox = document.getElementById('ve-a-result');
@@ -1843,7 +1846,8 @@ function veApplyPathA() {
     resultContent.innerHTML = html;
     resultBox.style.display = 'block';
 
-    setTimeout(function() { status.textContent = ''; }, 3000);
+    // Close form after brief delay
+    setTimeout(function() { veHideForm(); }, 2500);
   })
   .catch(function(err) {
     status.textContent = 'Error: ' + err.message;
