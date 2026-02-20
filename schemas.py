@@ -99,6 +99,10 @@ class VisualConfig(BaseModel):
     primary_text_color: str = "#ffffff"
     font_family:        str = "Arial, sans-serif"
     ui_theme:           Literal["dark", "classic", "minimal"] = "dark"
+    # Image assets — base64-encoded PNG/JPG strings. null = use code-drawn fallback.
+    background_image:   Optional[str] = None
+    card_back_image:    Optional[str] = None
+    felt_image:         Optional[str] = None
 
 
 # ---------------------------------------------------------------------------

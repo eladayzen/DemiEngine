@@ -93,6 +93,7 @@ const app = new PIXI.Application({
   resolution:      Math.min(window.devicePixelRatio || 1, 2),
   autoDensity:     true,
   backgroundColor: 0x000000,
+  preserveDrawingBuffer: true,  // Enables canvas screenshot capture
 });
 document.body.appendChild(app.view);
 
@@ -167,17 +168,56 @@ gameContainer.addChild(flyingCardLayer);
 gameContainer.addChild(overlayContainer);
 
 // ============================================================
+// IMAGE ASSET SPRITES  (null = use code-drawn fallback)
+// ============================================================
+let _bgSprite   = null;
+let _feltSprite = null;
+let _cardBackTexture = null;
+
+function _loadImageAssets() {
+  const V = CONFIG.visual;
+  if (V.card_back_image) {
+    _cardBackTexture = PIXI.Texture.from('data:image/png;base64,' + V.card_back_image);
+  }
+}
+
+// ============================================================
 // BACKGROUND
 // ============================================================
 function drawBackground() {
   const V = CONFIG.visual;
   bgLayer.clear();
-  bgLayer.beginFill(hex(V.background_color));
-  bgLayer.drawRect(0, 0, STAGE_W, STAGE_H);
-  bgLayer.endFill();
-  bgLayer.beginFill(hex(V.table_felt_color), 0.35);
-  bgLayer.drawRoundedRect(12, 90, STAGE_W - 24, STAGE_H - 190, 14);
-  bgLayer.endFill();
+
+  // Remove any previous image sprites
+  if (_bgSprite)   { bgLayer.removeChild(_bgSprite);   _bgSprite.destroy();   _bgSprite   = null; }
+  if (_feltSprite) { bgLayer.removeChild(_feltSprite); _feltSprite.destroy(); _feltSprite = null; }
+
+  // Background — image or solid color
+  if (V.background_image) {
+    const tex = PIXI.Texture.from('data:image/png;base64,' + V.background_image);
+    _bgSprite = new PIXI.Sprite(tex);
+    _bgSprite.width  = STAGE_W;
+    _bgSprite.height = STAGE_H;
+    bgLayer.addChildAt(_bgSprite, 0);
+  } else {
+    bgLayer.beginFill(hex(V.background_color));
+    bgLayer.drawRect(0, 0, STAGE_W, STAGE_H);
+    bgLayer.endFill();
+  }
+
+  // Felt / table surface — image or semi-transparent overlay
+  if (V.felt_image) {
+    const tex = PIXI.Texture.from('data:image/png;base64,' + V.felt_image);
+    _feltSprite = new PIXI.Sprite(tex);
+    _feltSprite.x      = 12;    _feltSprite.y      = 90;
+    _feltSprite.width  = STAGE_W - 24;
+    _feltSprite.height = STAGE_H - 190;
+    bgLayer.addChild(_feltSprite);
+  } else {
+    bgLayer.beginFill(hex(V.table_felt_color), 0.35);
+    bgLayer.drawRoundedRect(12, 90, STAGE_W - 24, STAGE_H - 190, 14);
+    bgLayer.endFill();
+  }
 }
 
 // ============================================================
@@ -246,21 +286,30 @@ function makeCardSprite(code, faceUp) {
     g.endFill();
     addFaceTexts(c, info);
   } else {
-    g.beginFill(hex(V.card_back_color));
-    g.lineStyle(1.5, hex(V.card_border_color));
-    g.drawRoundedRect(0, 0, CARD_W, CARD_H, 6);
-    g.endFill();
-    if (V.card_back_pattern === 'stripes') {
-      g.lineStyle(1, 0xffffff, 0.15);
-      for (let x = 8; x < CARD_W; x += 8) { g.moveTo(x, 0); g.lineTo(x, CARD_H); }
-    } else if (V.card_back_pattern === 'dots') {
-      g.lineStyle(0); g.beginFill(0xffffff, 0.15);
-      for (let x = 10; x < CARD_W; x += 10)
-        for (let y = 10; y < CARD_H; y += 10) g.drawCircle(x, y, 2);
+    if (_cardBackTexture) {
+      // Use image asset for card back
+      const s = new PIXI.Sprite(_cardBackTexture);
+      s.width  = CARD_W;
+      s.height = CARD_H;
+      c.addChild(s);
+    } else {
+      // Code-drawn fallback
+      g.beginFill(hex(V.card_back_color));
+      g.lineStyle(1.5, hex(V.card_border_color));
+      g.drawRoundedRect(0, 0, CARD_W, CARD_H, 6);
       g.endFill();
+      if (V.card_back_pattern === 'stripes') {
+        g.lineStyle(1, 0xffffff, 0.15);
+        for (let x = 8; x < CARD_W; x += 8) { g.moveTo(x, 0); g.lineTo(x, CARD_H); }
+      } else if (V.card_back_pattern === 'dots') {
+        g.lineStyle(0); g.beginFill(0xffffff, 0.15);
+        for (let x = 10; x < CARD_W; x += 10)
+          for (let y = 10; y < CARD_H; y += 10) g.drawCircle(x, y, 2);
+        g.endFill();
+      }
+      g.lineStyle(1, 0xffffff, 0.2);
+      g.drawRoundedRect(4, 4, CARD_W - 8, CARD_H - 8, 4);
     }
-    g.lineStyle(1, 0xffffff, 0.2);
-    g.drawRoundedRect(4, 4, CARD_W - 8, CARD_H - 8, 4);
   }
 
   c._code   = code;
@@ -945,6 +994,7 @@ app.ticker.add(() => {
 // START
 // ============================================================
 function startGame() {
+  _loadImageAssets();
   drawBackground();
   initGlowFilter();
   buildLevel(0);

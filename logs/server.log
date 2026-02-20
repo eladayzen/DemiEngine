@@ -1,0 +1,375 @@
+2026-02-19 15:23:54  INFO     POST /api/visual/layout — level=0, annotations=False, nanobanana_ref=False, note='those cards in the tableau need to be placed in a shape of a'
+2026-02-19 15:24:00  INFO     HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2026-02-19 15:24:00  INFO     visual/layout OK — foundation=2H, 4 tableau cards
+2026-02-19 15:24:13  INFO     POST /api/generate — validating configs
+2026-02-19 15:24:13  INFO     Build complete → build_20260219_152413  (bg_image=False, card_back_image=False, felt_image=False)
+2026-02-19 15:25:23  INFO     POST /api/generate — validating configs
+2026-02-19 15:25:23  INFO     Build complete → build_20260219_152523  (bg_image=False, card_back_image=False, felt_image=False)
+2026-02-19 15:25:59  INFO     POST /api/visual/layout — level=0, annotations=False, nanobanana_ref=False, note='place the cards in a shape of a diamond'
+2026-02-19 15:26:05  INFO     HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2026-02-19 15:26:05  INFO     visual/layout OK — foundation=2H, 4 tableau cards
+2026-02-19 15:27:02  INFO     POST /api/visual/layout — level=0, annotations=True, nanobanana_ref=False, note='create this shape with the cards like in my drawing referanc'
+2026-02-19 15:27:09  INFO     HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2026-02-19 15:27:09  INFO     visual/layout OK — foundation=7H, 13 tableau cards
+2026-02-19 15:28:12  INFO     POST /api/nanobanana/enhance-prompt — rough_prompt='background should be a scene from the bitch in a 3d pixar style. back side of th'
+2026-02-19 15:28:18  INFO     HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2026-02-19 15:28:18  INFO     enhance-prompt OK — 3 suggestions returned
+2026-02-19 15:28:27  INFO     POST /api/nanobanana/generate — mode=image-to-image, prompt='A luxurious beach resort scene in 3D Pixar animation style with white sand, turq', n=2
+2026-02-19 15:28:28  INFO     AFC is enabled with max remote calls: 10.
+2026-02-19 15:28:28  INFO     HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp-image-generation:generateContent "HTTP/1.1 400 Bad Request"
+2026-02-19 15:28:28  ERROR    nanobanana/generate failed: 400 INVALID_ARGUMENT. {'error': {'code': 400, 'message': 'API key not valid. Please pass a valid API key.', 'status': 'INVALID_ARGUMENT', 'details': [{'@type': 'type.googleapis.com/google.rpc.ErrorInfo', 'reason': 'API_KEY_INVALID', 'domain': 'googleapis.com', 'metadata': {'service': 'generativelanguage.googleapis.com'}}, {'@type': 'type.googleapis.com/google.rpc.LocalizedMessage', 'locale': 'en-US', 'message': 'API key not valid. Please pass a valid API key.'}]}}
+2026-02-19 15:36:08  INFO     POST /api/generate — validating configs
+2026-02-19 15:36:08  INFO     Build complete → build_20260219_153608  (bg_image=False, card_back_image=False, felt_image=False)
+2026-02-19 15:36:19  INFO     POST /api/generate — validating configs
+2026-02-19 15:36:19  INFO     Build complete → build_20260219_153619  (bg_image=False, card_back_image=False, felt_image=False)
+2026-02-19 15:37:33  INFO     POST /api/nanobanana/enhance-prompt — rough_prompt='cahnge background to a zoo scene in stylized 3d cute style'
+2026-02-19 15:37:39  INFO     HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2026-02-19 15:37:39  INFO     enhance-prompt OK — 3 suggestions returned
+2026-02-19 15:37:43  INFO     POST /api/nanobanana/generate — mode=image-to-image, prompt='A vibrant stylized 3D zoo scene with cute cartoon animals, colorful enclosures w', n=2
+2026-02-19 15:37:43  INFO     AFC is enabled with max remote calls: 10.
+2026-02-19 15:37:44  INFO     HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp-image-generation:generateContent "HTTP/1.1 400 Bad Request"
+2026-02-19 15:37:44  ERROR    nanobanana/generate failed: 400 INVALID_ARGUMENT. {'error': {'code': 400, 'message': 'Model does not support the requested response modalities: image', 'status': 'INVALID_ARGUMENT'}}
+2026-02-19 16:11:40  INFO     POST /api/nanobanana/generate — mode=image-to-image, prompt='A vibrant stylized 3D zoo scene with cute cartoon animals, colorful enclosures w', n=2
+2026-02-19 16:11:41  INFO     AFC is enabled with max remote calls: 10.
+2026-02-19 16:11:46  INFO     HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp-image-generation:generateContent "HTTP/1.1 200 OK"
+2026-02-19 16:11:46  INFO     AFC is enabled with max remote calls: 10.
+2026-02-19 16:11:51  INFO     HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp-image-generation:generateContent "HTTP/1.1 200 OK"
+2026-02-19 16:11:52  INFO     nanobanana/generate OK — 2 images returned
+2026-02-19 16:12:22  INFO     POST /api/assets/replace — assets=['background'], has_annotations=False
+2026-02-19 16:12:22  INFO     AFC is enabled with max remote calls: 10.
+2026-02-19 16:12:33  INFO     HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp-image-generation:generateContent "HTTP/1.1 200 OK"
+2026-02-19 16:12:33  INFO     assets/replace OK — replaced: ['background']
+2026-02-19 16:12:41  INFO     POST /api/generate — validating configs
+2026-02-19 16:12:41  INFO     Build complete → build_20260219_161241  (bg_image=True, card_back_image=False, felt_image=False)
+2026-02-19 16:57:49  INFO     POST /api/nanobanana/enhance-prompt — rough_prompt='same image - only flip one o the chards, and change the background image to have'
+2026-02-19 16:57:59  INFO     HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2026-02-19 16:57:59  INFO     enhance-prompt OK — 3 suggestions returned
+2026-02-19 16:58:08  INFO     POST /api/nanobanana/generate — mode=image-to-image, prompt='A vibrant carnival garden scene with colorful striped tent structures and playin', n=2
+2026-02-19 16:58:08  INFO     AFC is enabled with max remote calls: 10.
+2026-02-19 16:58:15  INFO     HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp-image-generation:generateContent "HTTP/1.1 200 OK"
+2026-02-19 16:58:15  INFO     AFC is enabled with max remote calls: 10.
+2026-02-19 16:58:22  INFO     HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp-image-generation:generateContent "HTTP/1.1 200 OK"
+2026-02-19 16:58:22  INFO     nanobanana/generate OK — 2 images returned
+2026-02-19 16:58:38  INFO     POST /api/assets/replace — assets=['background', 'card_back', 'felt'], has_annotations=False
+2026-02-19 16:58:38  INFO     AFC is enabled with max remote calls: 10.
+2026-02-19 16:58:44  INFO     HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp-image-generation:generateContent "HTTP/1.1 200 OK"
+2026-02-19 16:58:45  INFO     AFC is enabled with max remote calls: 10.
+2026-02-19 16:58:50  INFO     HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp-image-generation:generateContent "HTTP/1.1 200 OK"
+2026-02-19 16:58:51  INFO     AFC is enabled with max remote calls: 10.
+2026-02-19 16:58:58  INFO     HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp-image-generation:generateContent "HTTP/1.1 200 OK"
+2026-02-19 16:58:59  INFO     assets/replace OK — replaced: ['background', 'card_back', 'felt']
+2026-02-19 16:59:23  INFO     POST /api/generate — validating configs
+2026-02-19 16:59:23  INFO     Build complete → build_20260219_165923  (bg_image=True, card_back_image=True, felt_image=True)
+2026-02-19 17:11:43  INFO     POST /api/generate — validating configs
+2026-02-19 17:11:43  INFO     Build complete → build_20260219_171143  (bg_image=False, card_back_image=False, felt_image=False)
+2026-02-19 17:12:26  INFO     Created placeholder asset: background.png  (390, 844)  #1a472a
+2026-02-19 17:12:26  INFO     Created placeholder asset: card_back.png  (60, 84)  #1a237e
+2026-02-19 17:12:26  INFO     Created placeholder asset: felt.png  (366, 560)  #15803d
+2026-02-19 17:12:36  INFO     assets/list — returning 3 slots
+2026-02-19 17:12:55  INFO     assets/list — returning 3 slots
+2026-02-19 17:14:36  INFO     POST /api/visual/layout — level=0, annotations=True, nanobanana_ref=False, note='use this shape for this level'
+2026-02-19 17:14:41  INFO     HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2026-02-19 17:14:41  INFO     visual/layout OK — foundation=2H, 4 tableau cards
+2026-02-19 17:16:19  INFO     POST /api/nanobanana/enhance-prompt — rough_prompt='keep this composition - replace the background with a painted wooden table, chan'
+2026-02-19 17:16:28  INFO     HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2026-02-19 17:16:28  INFO     enhance-prompt OK — 3 suggestions returned
+2026-02-19 17:16:32  INFO     POST /api/nanobanana/generate — mode=image-to-image, prompt='A solitaire card game layout on a rustic painted wooden table with visible wood ', n=2
+2026-02-19 17:16:33  INFO     AFC is enabled with max remote calls: 10.
+2026-02-19 17:16:37  INFO     HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp-image-generation:generateContent "HTTP/1.1 200 OK"
+2026-02-19 17:16:37  INFO     AFC is enabled with max remote calls: 10.
+2026-02-19 17:16:42  INFO     HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp-image-generation:generateContent "HTTP/1.1 200 OK"
+2026-02-19 17:16:42  INFO     nanobanana/generate OK — 2 images returned
+2026-02-19 17:16:51  INFO     assets/list — returning 3 slots
+2026-02-19 17:17:01  INFO     POST /api/assets/replace — assets=['background', 'card_back', 'felt'], has_annotations=False
+2026-02-19 17:17:01  INFO     AFC is enabled with max remote calls: 10.
+2026-02-19 17:17:08  INFO     HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp-image-generation:generateContent "HTTP/1.1 200 OK"
+2026-02-19 17:17:08  INFO     Backed up background.png → history/background_20260219_171701.png
+2026-02-19 17:17:08  INFO     Saved new project asset: background.png
+2026-02-19 17:17:09  INFO     AFC is enabled with max remote calls: 10.
+2026-02-19 17:17:18  INFO     HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp-image-generation:generateContent "HTTP/1.1 200 OK"
+2026-02-19 17:17:18  INFO     Backed up card_back.png → history/card_back_20260219_171701.png
+2026-02-19 17:17:18  INFO     Saved new project asset: card_back.png
+2026-02-19 17:17:18  INFO     AFC is enabled with max remote calls: 10.
+2026-02-19 17:17:27  INFO     HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp-image-generation:generateContent "HTTP/1.1 200 OK"
+2026-02-19 17:17:28  INFO     Backed up felt.png → history/felt_20260219_171701.png
+2026-02-19 17:17:28  INFO     Saved new project asset: felt.png
+2026-02-19 17:17:28  INFO     assets/replace OK — saved: ['background', 'card_back', 'felt']
+2026-02-19 17:17:51  INFO     POST /api/generate — validating configs
+2026-02-19 17:17:51  INFO     Embedded project assets into build: {'background': 'background.png', 'card_back': 'card_back.png', 'felt': 'felt.png'}
+2026-02-19 17:17:51  INFO     Build complete → build_20260219_171751  (bg_image=False, card_back_image=False, felt_image=False)
+2026-02-19 17:29:30  INFO     POST /api/generate — validating configs
+2026-02-19 17:29:30  INFO     Embedded project assets into build: {'background': 'background.png', 'card_back': 'card_back.png', 'felt': 'felt.png'}
+2026-02-19 17:29:30  INFO     Build complete → build_20260219_172930  (bg_image=False, card_back_image=False, felt_image=False)
+2026-02-19 17:29:42  INFO     assets/list — returning 3 slots
+2026-02-19 17:29:46  INFO     POST /api/generate — validating configs
+2026-02-19 17:29:46  INFO     Embedded project assets into build: {'background': 'background.png', 'card_back': 'card_back.png', 'felt': 'felt.png'}
+2026-02-19 17:29:46  INFO     Build complete → build_20260219_172946  (bg_image=False, card_back_image=False, felt_image=False)
+2026-02-19 17:43:51  INFO     assets/list — returning 3 slots
+2026-02-19 17:43:56  INFO     assets/list — returning 3 slots
+2026-02-19 17:44:04  INFO     POST /api/generate — validating configs
+2026-02-19 17:44:04  INFO     Embedded project assets into build: {'background': 'background.png', 'card_back': 'card_back.png', 'felt': 'felt.png'}
+2026-02-19 17:44:04  INFO     Build complete → build_20260219_174404  (bg_image=False, card_back_image=False, felt_image=False)
+2026-02-19 17:44:32  INFO     assets/list — returning 3 slots
+2026-02-19 17:44:35  INFO     assets/list — returning 3 slots
+2026-02-19 17:45:53  INFO     assets/list — returning 3 slots
+2026-02-19 17:45:53  INFO     POST /api/generate — validating configs
+2026-02-19 17:45:53  INFO     Embedded project assets into build: {'background': 'background.png', 'card_back': 'card_back.png', 'felt': 'felt.png'}
+2026-02-19 17:45:53  INFO     Build complete → build_20260219_174553  (bg_image=False, card_back_image=False, felt_image=False)
+2026-02-19 17:45:53  INFO     assets/list — returning 3 slots
+2026-02-19 17:45:53  INFO     assets/list — returning 3 slots
+2026-02-19 17:45:53  INFO     assets/list — returning 3 slots
+2026-02-19 17:45:56  INFO     assets/list — returning 3 slots
+2026-02-19 17:46:02  INFO     POST /api/generate — validating configs
+2026-02-19 17:46:02  INFO     Embedded project assets into build: {'background': 'background.png', 'card_back': 'card_back.png', 'felt': 'felt.png'}
+2026-02-19 17:46:02  INFO     Build complete → build_20260219_174602  (bg_image=False, card_back_image=False, felt_image=False)
+2026-02-19 17:46:57  INFO     assets/list — returning 3 slots
+2026-02-19 17:48:11  INFO     POST /api/generate — validating configs
+2026-02-19 17:48:11  INFO     Embedded project assets into build: {'background': 'background.png', 'card_back': 'card_back.png', 'felt': 'felt.png'}
+2026-02-19 17:48:11  INFO     Build complete → build_20260219_174811  (bg_image=False, card_back_image=False, felt_image=False)
+2026-02-19 17:49:10  INFO     POST /api/nanobanana/enhance-prompt — rough_prompt='I want the Felt asset to be with very low opacity - only hardly seen'
+2026-02-19 17:49:18  INFO     HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2026-02-19 17:49:18  INFO     enhance-prompt OK — 3 suggestions returned
+2026-02-19 17:49:57  INFO     POST /api/nanobanana/enhance-prompt — rough_prompt='the exact same frame - only the solid green solid is replaced with a low opacity'
+2026-02-19 17:50:04  INFO     HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2026-02-19 17:50:04  INFO     enhance-prompt OK — 3 suggestions returned
+2026-02-19 17:50:07  INFO     POST /api/nanobanana/generate — mode=image-to-image, prompt='A solitaire card game layout on a semi-transparent black felt background showing', n=2
+2026-02-19 17:50:08  INFO     AFC is enabled with max remote calls: 10.
+2026-02-19 17:50:13  INFO     HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp-image-generation:generateContent "HTTP/1.1 200 OK"
+2026-02-19 17:50:13  INFO     AFC is enabled with max remote calls: 10.
+2026-02-19 17:50:20  INFO     HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp-image-generation:generateContent "HTTP/1.1 200 OK"
+2026-02-19 17:50:21  INFO     nanobanana/generate OK — 2 images returned
+2026-02-19 17:50:28  INFO     assets/list — returning 3 slots
+2026-02-19 17:50:39  INFO     POST /api/assets/replace — assets=['felt'], has_annotations=False
+2026-02-19 17:50:39  INFO     Generating asset 'felt' at 366x560px from reference
+2026-02-19 17:50:39  INFO     AFC is enabled with max remote calls: 10.
+2026-02-19 17:50:48  INFO     HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp-image-generation:generateContent "HTTP/1.1 200 OK"
+2026-02-19 17:50:49  INFO     Backed up felt.png → history/felt_20260219_175039.png
+2026-02-19 17:50:49  INFO     Saved new project asset: felt.png  366x560px
+2026-02-19 17:50:49  INFO     assets/replace OK — saved: ['felt']
+2026-02-19 17:51:48  INFO     POST /api/generate — validating configs
+2026-02-19 17:51:48  INFO     Embedded project assets into build: {'background': 'background.png', 'card_back': 'card_back.png', 'felt': 'felt.png'}
+2026-02-19 17:51:48  INFO     Build complete → build_20260219_175148  (bg_image=False, card_back_image=False, felt_image=False)
+2026-02-19 17:52:17  INFO     assets/list — returning 3 slots
+2026-02-19 18:14:43  INFO     assets/list — returning 3 slots
+2026-02-19 18:14:45  INFO     POST /api/generate — validating configs
+2026-02-19 18:14:45  INFO     Embedded project assets into build: {'background': 'background.png', 'card_back': 'card_back.png', 'felt': 'felt.png'}
+2026-02-19 18:14:45  INFO     Build complete → build_20260219_181445  (bg_image=False, card_back_image=False, felt_image=False)
+2026-02-19 18:14:53  INFO     assets/list — returning 3 slots
+2026-02-19 18:14:58  INFO     assets/list — returning 3 slots
+2026-02-19 18:15:03  INFO     assets/list — returning 3 slots
+2026-02-19 18:15:47  INFO     POST /api/assets/edit-preview — asset=felt, prompt='This asset should be an ice texture, rounded colors, low opactiy'
+2026-02-19 18:15:48  INFO     AFC is enabled with max remote calls: 10.
+2026-02-19 18:15:52  INFO     HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp-image-generation:generateContent "HTTP/1.1 200 OK"
+2026-02-19 18:15:53  INFO     assets/edit-preview OK — asset=felt
+2026-02-19 18:15:53  INFO     assets/list — returning 3 slots
+2026-02-19 18:16:17  INFO     POST /api/assets/edit-preview — asset=felt, prompt='This asset should be an ice texture, rounded colors, low opactiy. loose the card'
+2026-02-19 18:16:17  INFO     AFC is enabled with max remote calls: 10.
+2026-02-19 18:16:22  INFO     HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp-image-generation:generateContent "HTTP/1.1 200 OK"
+2026-02-19 18:16:22  INFO     assets/edit-preview OK — asset=felt
+2026-02-19 18:16:22  INFO     assets/list — returning 3 slots
+2026-02-19 18:16:54  INFO     POST /api/assets/edit-preview — asset=felt, prompt='This asset should be an ice texture, rounded colors, low opacity. erase the card'
+2026-02-19 18:16:54  INFO     AFC is enabled with max remote calls: 10.
+2026-02-19 18:17:02  INFO     HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp-image-generation:generateContent "HTTP/1.1 200 OK"
+2026-02-19 18:17:02  INFO     assets/edit-preview OK — asset=felt
+2026-02-19 18:17:02  INFO     assets/list — returning 3 slots
+2026-02-19 18:17:12  INFO     assets/list — returning 3 slots
+2026-02-19 18:17:18  INFO     assets/list — returning 3 slots
+2026-02-19 18:17:18  INFO     assets/list — returning 3 slots
+2026-02-19 18:17:19  INFO     assets/list — returning 3 slots
+2026-02-19 18:17:19  INFO     assets/list — returning 3 slots
+2026-02-19 18:17:20  INFO     assets/list — returning 3 slots
+2026-02-19 18:17:20  INFO     assets/list — returning 3 slots
+2026-02-19 18:18:15  INFO     assets/list — returning 3 slots
+2026-02-19 18:18:20  INFO     assets/list — returning 3 slots
+2026-02-19 18:18:22  INFO     POST /api/assets/edit-preview — asset=felt, prompt='This asset should be an ice texture, rounded colors, low opacity. erase the card'
+2026-02-19 18:18:22  INFO     AFC is enabled with max remote calls: 10.
+2026-02-19 18:18:28  INFO     HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp-image-generation:generateContent "HTTP/1.1 200 OK"
+2026-02-19 18:18:35  INFO     POST /api/assets/edit-preview — asset=felt, prompt='This asset should be an ice texture, rounded colors, low opacity. erase the card'
+2026-02-19 18:18:35  INFO     AFC is enabled with max remote calls: 10.
+2026-02-19 18:18:41  INFO     HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp-image-generation:generateContent "HTTP/1.1 200 OK"
+2026-02-19 18:19:00  INFO     assets/list — returning 3 slots
+2026-02-19 18:19:12  INFO     POST /api/assets/edit-preview — asset=felt, prompt='This asset should be an ice texture, rounded colors, low opacity. erase the card'
+2026-02-19 18:19:12  INFO     AFC is enabled with max remote calls: 10.
+2026-02-19 18:19:19  INFO     HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp-image-generation:generateContent "HTTP/1.1 200 OK"
+2026-02-19 18:19:20  INFO     assets/edit-preview OK — asset=felt
+2026-02-19 18:19:20  INFO     assets/list — returning 3 slots
+2026-02-19 18:22:44  INFO     POST /api/generate — validating configs
+2026-02-19 18:22:44  INFO     Embedded project assets into build: {'background': 'background.png', 'card_back': 'card_back.png', 'felt': 'felt.png'}
+2026-02-19 18:22:44  INFO     Build complete → build_20260219_182244  (bg_image=False, card_back_image=False, felt_image=False)
+2026-02-19 18:23:44  INFO     assets/list — returning 3 slots
+2026-02-19 18:23:59  INFO     assets/list — returning 3 slots
+2026-02-19 18:25:05  INFO     POST /api/assets/edit-preview — asset=felt, prompt='change this asset to be a frozen texture, round corners - the entire asset shoul'
+2026-02-19 18:25:06  INFO     AFC is enabled with max remote calls: 10.
+2026-02-19 18:25:12  INFO     HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp-image-generation:generateContent "HTTP/1.1 200 OK"
+2026-02-19 18:25:12  INFO       Resizing from (648, 1024) -> (366, 560)
+2026-02-19 18:25:12  INFO     assets/edit-preview OK — asset=felt  366x560px
+2026-02-19 18:25:12  INFO     assets/list — returning 3 slots
+2026-02-19 18:25:20  INFO     POST /api/assets/edit-preview — asset=felt, prompt='change this asset to be a frozen texture, round corners - the entire asset shoul'
+2026-02-19 18:25:20  INFO     AFC is enabled with max remote calls: 10.
+2026-02-19 18:25:28  INFO     HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp-image-generation:generateContent "HTTP/1.1 200 OK"
+2026-02-19 18:25:29  INFO       Resizing from (668, 1024) -> (366, 560)
+2026-02-19 18:25:29  INFO     assets/edit-preview OK — asset=felt  366x560px
+2026-02-19 18:25:29  INFO     assets/list — returning 3 slots
+2026-02-19 18:25:32  INFO     Backed up felt.png -> history/felt_20260219_182532.png
+2026-02-19 18:25:32  INFO     assets/approve OK — saved felt.png  366x560px
+2026-02-19 18:25:39  INFO     assets/list — returning 3 slots
+2026-02-19 18:25:48  INFO     Backed up felt.png -> history/felt_20260219_182548.png
+2026-02-19 18:25:48  INFO     assets/approve OK — saved felt.png  366x560px
+2026-02-19 18:26:34  INFO     POST /api/generate — validating configs
+2026-02-19 18:26:34  INFO     Embedded project assets into build: {'background': 'background.png', 'card_back': 'card_back.png', 'felt': 'felt.png'}
+2026-02-19 18:26:34  INFO     Build complete → build_20260219_182634  (bg_image=False, card_back_image=False, felt_image=False)
+2026-02-19 18:27:07  INFO     assets/list — returning 3 slots
+2026-02-19 18:27:10  INFO     POST /api/generate — validating configs
+2026-02-19 18:27:10  INFO     Embedded project assets into build: {'background': 'background.png', 'card_back': 'card_back.png', 'felt': 'felt.png'}
+2026-02-19 18:27:10  INFO     Build complete → build_20260219_182710  (bg_image=False, card_back_image=False, felt_image=False)
+2026-02-19 18:29:56  INFO     POST /api/visual/layout — level=0, annotations=False, nanobanana_ref=False, note='change the tableau card positions to the red marks on my dra'
+2026-02-19 18:30:02  INFO     HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2026-02-19 18:30:02  INFO     visual/layout OK — foundation=2H, 4 tableau cards
+2026-02-19 18:30:12  INFO     POST /api/generate — validating configs
+2026-02-19 18:30:12  INFO     Embedded project assets into build: {'background': 'background.png', 'card_back': 'card_back.png', 'felt': 'felt.png'}
+2026-02-19 18:30:12  INFO     Build complete → build_20260219_183012  (bg_image=False, card_back_image=False, felt_image=False)
+2026-02-19 18:38:31  INFO     assets/list — returning 3 slots
+2026-02-19 18:38:37  INFO     POST /api/generate — validating configs
+2026-02-19 18:38:37  INFO     Embedded project assets into build: {'background': 'background.png', 'card_back': 'card_back.png', 'felt': 'felt.png'}
+2026-02-19 18:38:37  INFO     Build complete → build_20260219_183837  (bg_image=False, card_back_image=False, felt_image=False)
+2026-02-19 18:39:30  INFO     POST /api/visual/layout — level=0, annotations=False, nanobanana_ref=False, note='Change position of cards based on my drawing.'
+2026-02-19 18:39:34  INFO     HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2026-02-19 18:39:34  INFO     visual/layout OK — foundation=2H, 4 tableau cards
+2026-02-19 18:39:43  INFO     POST /api/generate — validating configs
+2026-02-19 18:39:43  INFO     Embedded project assets into build: {'background': 'background.png', 'card_back': 'card_back.png', 'felt': 'felt.png'}
+2026-02-19 18:39:43  INFO     Build complete → build_20260219_183943  (bg_image=False, card_back_image=False, felt_image=False)
+2026-02-19 19:21:55  INFO     assets/list — returning 3 slots
+2026-02-19 19:22:39  INFO     POST /api/visual/layout — level=0, annotations=False, nanobanana_ref=False, note='change the locations of the tableau cards to the marked red '
+2026-02-19 19:22:44  INFO     HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2026-02-19 19:22:44  INFO     visual/layout OK — foundation=2H, 4 tableau cards
+2026-02-19 19:22:52  INFO     POST /api/generate — validating configs
+2026-02-19 19:22:52  INFO     Embedded project assets into build: {'background': 'background.png', 'card_back': 'card_back.png', 'felt': 'felt.png'}
+2026-02-19 19:22:52  INFO     Build complete → build_20260219_192252  (bg_image=False, card_back_image=False, felt_image=False)
+2026-02-19 19:23:31  INFO     POST /api/generate — validating configs
+2026-02-19 19:23:31  INFO     Embedded project assets into build: {'background': 'background.png', 'card_back': 'card_back.png', 'felt': 'felt.png'}
+2026-02-19 19:23:31  INFO     Build complete → build_20260219_192331  (bg_image=False, card_back_image=False, felt_image=False)
+2026-02-20 09:43:49  INFO     assets/list — returning 3 slots
+2026-02-20 09:43:51  INFO     POST /api/generate — validating configs
+2026-02-20 09:43:51  INFO     Embedded project assets into build: {'background': 'background.png', 'card_back': 'card_back.png', 'felt': 'felt.png'}
+2026-02-20 09:43:51  INFO     Build complete → build_20260220_094351  (bg_image=False, card_back_image=False, felt_image=False)
+2026-02-20 09:45:09  INFO     POST /api/visual/layout — level=0, annotations=False, nanobanana_ref=False, note='Change the location of the tableau cards to be in the positi'
+2026-02-20 09:45:13  INFO     HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2026-02-20 09:45:13  INFO     visual/layout OK — foundation=2H, 4 tableau cards
+2026-02-20 09:45:22  INFO     POST /api/generate — validating configs
+2026-02-20 09:45:22  INFO     Embedded project assets into build: {'background': 'background.png', 'card_back': 'card_back.png', 'felt': 'felt.png'}
+2026-02-20 09:45:22  INFO     Build complete → build_20260220_094522  (bg_image=False, card_back_image=False, felt_image=False)
+2026-02-20 09:45:43  INFO     POST /api/generate — validating configs
+2026-02-20 09:45:43  INFO     Embedded project assets into build: {'background': 'background.png', 'card_back': 'card_back.png', 'felt': 'felt.png'}
+2026-02-20 09:45:43  INFO     Build complete → build_20260220_094543  (bg_image=False, card_back_image=False, felt_image=False)
+2026-02-20 09:45:45  INFO     POST /api/generate — validating configs
+2026-02-20 09:45:45  INFO     Embedded project assets into build: {'background': 'background.png', 'card_back': 'card_back.png', 'felt': 'felt.png'}
+2026-02-20 09:45:45  INFO     Build complete → build_20260220_094545  (bg_image=False, card_back_image=False, felt_image=False)
+2026-02-20 10:06:58  INFO     assets/list — returning 3 slots
+2026-02-20 10:07:01  INFO     POST /api/generate — validating configs
+2026-02-20 10:07:01  INFO     Embedded project assets into build: {'background': 'background.png', 'card_back': 'card_back.png', 'felt': 'felt.png'}
+2026-02-20 10:07:01  INFO     Build complete → build_20260220_100701  (bg_image=False, card_back_image=False, felt_image=False)
+2026-02-20 10:09:14  INFO     POST /api/visual/layout — level=0, has_drawing=False, annotations=False, nanobanana_ref=False, note='change location of tableau cards to the red marking location'
+2026-02-20 10:09:19  INFO     HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2026-02-20 10:09:19  INFO     visual/layout OK — foundation=2H, 4 tableau cards
+2026-02-20 10:09:51  INFO     POST /api/visual/layout — level=0, has_drawing=True, annotations=False, nanobanana_ref=False, note='change location of tableau cards to the red marking location'
+2026-02-20 10:09:56  INFO     HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2026-02-20 10:09:56  INFO     visual/layout OK — foundation=2H, 4 tableau cards
+2026-02-20 10:10:13  INFO     POST /api/generate — validating configs
+2026-02-20 10:10:13  INFO     Embedded project assets into build: {'background': 'background.png', 'card_back': 'card_back.png', 'felt': 'felt.png'}
+2026-02-20 10:10:13  INFO     Build complete → build_20260220_101013  (bg_image=False, card_back_image=False, felt_image=False)
+2026-02-20 10:11:01  INFO     assets/list — returning 3 slots
+2026-02-20 10:15:07  INFO     POST /api/assets/edit-preview — asset=card_back, prompt='change this asset to a have a cool pixar cat drawing on a light blue background'
+2026-02-20 10:15:09  INFO     AFC is enabled with max remote calls: 10.
+2026-02-20 10:15:14  INFO     HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp-image-generation:generateContent "HTTP/1.1 200 OK"
+2026-02-20 10:15:14  INFO       Resizing from (1024, 1024) -> (60, 84)
+2026-02-20 10:15:14  INFO     assets/edit-preview OK — asset=card_back  60x84px
+2026-02-20 10:15:14  INFO     assets/list — returning 3 slots
+2026-02-20 10:15:19  INFO     Backed up card_back.png -> history/card_back_20260220_101519.png
+2026-02-20 10:15:19  INFO     assets/approve OK — saved card_back.png  60x84px
+2026-02-20 10:15:33  INFO     POST /api/generate — validating configs
+2026-02-20 10:15:33  INFO     Embedded project assets into build: {'background': 'background.png', 'card_back': 'card_back.png', 'felt': 'felt.png'}
+2026-02-20 10:15:33  INFO     Build complete → build_20260220_101533  (bg_image=False, card_back_image=False, felt_image=False)
+2026-02-20 10:15:45  INFO     assets/list — returning 3 slots
+2026-02-20 10:18:31  INFO     POST /api/nanobanana/enhance-prompt — rough_prompt='same solitaire - bigger cards - bigger icons inside the cards - style and shots '
+2026-02-20 10:18:37  INFO     HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2026-02-20 10:18:37  INFO     enhance-prompt OK — 3 suggestions returned
+2026-02-20 10:18:42  INFO     POST /api/nanobanana/generate — mode=image-to-image, prompt='A mobile solitaire game interface with oversized playing cards featuring extra-l', n=2
+2026-02-20 10:18:42  INFO     AFC is enabled with max remote calls: 10.
+2026-02-20 10:18:48  INFO     HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp-image-generation:generateContent "HTTP/1.1 200 OK"
+2026-02-20 10:18:48  INFO     AFC is enabled with max remote calls: 10.
+2026-02-20 10:18:52  INFO     HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp-image-generation:generateContent "HTTP/1.1 200 OK"
+2026-02-20 10:18:53  INFO     nanobanana/generate OK — 2 images returned
+2026-02-20 10:19:03  INFO     assets/list — returning 3 slots
+2026-02-20 10:19:41  INFO     assets/list — returning 3 slots
+2026-02-20 10:21:16  INFO     assets/list — returning 3 slots
+2026-02-20 10:21:17  INFO     assets/list — returning 3 slots
+2026-02-20 10:21:18  INFO     assets/list — returning 3 slots
+2026-02-20 10:24:57  INFO     assets/list — returning 3 slots
+2026-02-20 10:33:19  INFO     assets/list — returning 3 slots
+2026-02-20 10:33:44  INFO     assets/list — returning 3 slots
+2026-02-20 10:33:46  INFO     assets/list — returning 3 slots
+2026-02-20 10:34:44  INFO     assets/list — returning 3 slots
+2026-02-20 10:34:45  INFO     POST /api/generate — validating configs
+2026-02-20 10:34:45  INFO     Embedded project assets into build: {'background': 'background.png', 'card_back': 'card_back.png', 'felt': 'felt.png'}
+2026-02-20 10:34:45  INFO     Build complete → build_20260220_103445  (bg_image=False, card_back_image=False, felt_image=False)
+2026-02-20 10:35:32  INFO     POST /api/nanobanana/enhance-prompt — rough_prompt='change this to white'
+2026-02-20 10:35:37  INFO     HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2026-02-20 10:35:37  INFO     enhance-prompt OK — 3 suggestions returned
+2026-02-20 10:35:39  INFO     POST /api/nanobanana/generate — mode=image-to-image, prompt='A clean white background, pure solid white color with no texture or gradient, pr', n=2
+2026-02-20 10:35:40  INFO     AFC is enabled with max remote calls: 10.
+2026-02-20 10:35:44  INFO     HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp-image-generation:generateContent "HTTP/1.1 200 OK"
+2026-02-20 10:35:44  INFO     AFC is enabled with max remote calls: 10.
+2026-02-20 10:35:48  INFO     HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp-image-generation:generateContent "HTTP/1.1 200 OK"
+2026-02-20 10:35:48  ERROR    nanobanana/generate failed: 'NoneType' object has no attribute 'parts'
+2026-02-20 10:36:48  INFO     POST /api/nanobanana/enhance-prompt — rough_prompt='change this to white'
+2026-02-20 10:36:54  INFO     HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2026-02-20 10:36:54  INFO     enhance-prompt OK — 3 suggestions returned
+2026-02-20 10:39:33  INFO     assets/list — returning 3 slots
+2026-02-20 10:40:08  INFO     POST /api/assets/edit-preview — asset=card_back, prompt='the cat should be in a stylized 3d render - like a pixar cute character'
+2026-02-20 10:40:08  INFO     AFC is enabled with max remote calls: 10.
+2026-02-20 10:40:19  INFO     HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp-image-generation:generateContent "HTTP/1.1 200 OK"
+2026-02-20 10:40:19  INFO       Resizing from (757, 1024) -> (60, 84)
+2026-02-20 10:40:19  INFO     assets/edit-preview OK — asset=card_back  60x84px
+2026-02-20 10:40:19  INFO     assets/list — returning 3 slots
+2026-02-20 10:40:23  INFO     Backed up card_back.png -> history/card_back_20260220_104023.png
+2026-02-20 10:40:23  INFO     assets/approve OK — saved card_back.png  60x84px
+2026-02-20 10:40:29  INFO     Backed up card_back.png -> history/card_back_20260220_104029.png
+2026-02-20 10:40:29  INFO     assets/approve OK — saved card_back.png  60x84px
+2026-02-20 10:40:42  INFO     Backed up card_back.png -> history/card_back_20260220_104042.png
+2026-02-20 10:40:42  INFO     assets/approve OK — saved card_back.png  60x84px
+2026-02-20 10:41:37  INFO     assets/list — returning 3 slots
+2026-02-20 10:41:38  INFO     POST /api/generate — validating configs
+2026-02-20 10:41:38  INFO     Embedded project assets into build: {'background': 'background.png', 'card_back': 'card_back.png', 'felt': 'felt.png'}
+2026-02-20 10:41:38  INFO     Build complete → build_20260220_104138  (bg_image=False, card_back_image=False, felt_image=False)
+2026-02-20 10:45:57  INFO     POST /api/visual/layout — level=0, has_drawing=False, annotations=False, nanobanana_ref=False, note='change those 4 cards to be in a diamond shape'
+2026-02-20 10:46:03  INFO     HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2026-02-20 10:46:03  INFO     visual/layout OK — foundation=2H, 4 tableau cards
+2026-02-20 10:46:43  INFO     POST /api/visual/layout — level=0, has_drawing=True, annotations=False, nanobanana_ref=False, note='change those 4 cards to be in a diamond shape'
+2026-02-20 10:46:48  INFO     HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2026-02-20 10:46:48  INFO     visual/layout OK — foundation=2H, 4 tableau cards
+2026-02-20 10:46:57  INFO     POST /api/visual/layout — level=0, has_drawing=True, annotations=False, nanobanana_ref=False, note='change those 4 cards to be in a diamond shape'
+2026-02-20 10:47:02  INFO     HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2026-02-20 10:47:02  INFO     visual/layout OK — foundation=2H, 4 tableau cards
+2026-02-20 10:48:00  INFO     POST /api/generate — validating configs
+2026-02-20 10:48:00  INFO     Embedded project assets into build: {'background': 'background.png', 'card_back': 'card_back.png', 'felt': 'felt.png'}
+2026-02-20 10:48:00  INFO     Build complete → build_20260220_104800  (bg_image=False, card_back_image=False, felt_image=False)
+2026-02-20 10:49:43  INFO     assets/list — returning 3 slots
+2026-02-20 10:49:53  INFO     POST /api/generate — validating configs
+2026-02-20 10:49:53  INFO     Embedded project assets into build: {'background': 'background.png', 'card_back': 'card_back.png', 'felt': 'felt.png'}
+2026-02-20 10:49:53  INFO     Build complete → build_20260220_104953  (bg_image=False, card_back_image=False, felt_image=False)
+2026-02-20 10:49:58  INFO     assets/list — returning 3 slots
+2026-02-20 10:51:05  INFO     POST /api/visual/layout — level=0, has_drawing=False, annotations=False, nanobanana_ref=False, note='change thos cards to a box shape'
+2026-02-20 10:51:11  INFO     HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2026-02-20 10:51:11  INFO     visual/layout OK — foundation=2H, 4 tableau cards
+2026-02-20 10:51:14  INFO     POST /api/visual/layout — level=0, has_drawing=False, annotations=False, nanobanana_ref=False, note='change thos cards to a box shape'
+2026-02-20 10:51:20  INFO     HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2026-02-20 10:51:20  INFO     visual/layout OK — foundation=2H, 4 tableau cards
+2026-02-20 10:52:56  INFO     POST /api/nanobanana/enhance-prompt — rough_prompt="the base card should be higher. i've marked it's location"
+2026-02-20 10:53:03  INFO     HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2026-02-20 10:53:03  INFO     enhance-prompt OK — 3 suggestions returned
+2026-02-20 10:53:08  INFO     POST /api/nanobanana/generate — mode=image-to-image, prompt='A mobile card game interface showing three playing cards on a light blue texture', n=2
+2026-02-20 10:53:08  INFO     AFC is enabled with max remote calls: 10.
+2026-02-20 10:53:18  INFO     HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp-image-generation:generateContent "HTTP/1.1 200 OK"
+2026-02-20 10:53:19  INFO     AFC is enabled with max remote calls: 10.
+2026-02-20 10:53:25  INFO     HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp-image-generation:generateContent "HTTP/1.1 200 OK"
+2026-02-20 10:53:25  INFO     nanobanana/generate OK — 2 images returned

@@ -29,7 +29,23 @@
     header h1 { font-size: 20px; color: var(--accent); font-weight: 700; letter-spacing: 0.5px; }
     header span { color: var(--muted); font-size: 13px; }
 
-    .main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+    .main { flex: 1; display: flex; overflow: hidden; }
+
+    /* ── Preview panel (left 1/3) ──────────────────────────── */
+    .preview-panel { width: 33.333%; background: var(--surface);
+      border-right: 1px solid var(--border); display: flex; flex-direction: column; }
+    .preview-header { padding: 12px 16px; border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: space-between; }
+    .preview-header h2 { font-size: 13px; color: var(--muted); text-transform: uppercase;
+      letter-spacing: 1px; font-weight: 600; }
+    .preview-iframe-wrap { flex: 1; position: relative; background: #000; }
+    .preview-iframe-wrap iframe { width: 100%; height: 100%; border: none; }
+    .preview-placeholder { position: absolute; inset: 0; display: flex; align-items: center;
+      justify-content: center; flex-direction: column; gap: 10px; color: var(--muted);
+      font-size: 13px; }
+
+    /* ── Workspace (right 2/3) ────────────────────────────── */
+    .workspace { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
 
     /* ── Tabs ──────────────────────────────────────────────────── */
     .tabs { display: flex; gap: 4px; padding: 12px 20px 0;
@@ -204,22 +220,49 @@
 
 <div class="main">
 
-  <!-- ── TABS ── -->
-  <div class="tabs">
-    <button class="tab-btn active" data-tab="mechanics">Mechanics</button>
-    <button class="tab-btn"        data-tab="visual">Visual</button>
-    <button class="tab-btn"        data-tab="levels">Levels</button>
+  <!-- ══════════════════════════════════════════════════ -->
+  <!-- PREVIEW PANEL (left 1/3)                           -->
+  <!-- ══════════════════════════════════════════════════ -->
+  <div class="preview-panel">
+    <div class="preview-header">
+      <h2>Live Preview</h2>
+      <div style="display:flex; gap:6px">
+        <button class="ve-small-btn primary" onclick="veCapturePreview()" style="font-size:11px; padding:4px 10px">📸 Capture</button>
+        <button class="ve-small-btn" onclick="previewReload()" style="font-size:11px; padding:4px 10px">↻ Reload</button>
+      </div>
+    </div>
+    <div class="preview-iframe-wrap">
+      <iframe id="preview-iframe" src="about:blank"></iframe>
+      <div class="preview-placeholder" id="preview-placeholder">
+        <div style="font-size:40px; opacity:0.3">🎮</div>
+        <div>No build loaded</div>
+        <div style="font-size:11px; margin-top:8px">Click "Generate Ad" to preview</div>
+      </div>
+    </div>
   </div>
 
-  <!-- ── LOAD BAR ── -->
-  <div class="load-bar">
-    <label>Load build</label>
-    <select id="load-build-select">
-      <option value="">-- select a previous build --</option>
-    </select>
-    <div class="load-bar-divider"></div>
-    <button class="reset-btn" id="reset-defaults-btn">Reset to Defaults</button>
-  </div>
+  <!-- ══════════════════════════════════════════════════ -->
+  <!-- WORKSPACE (right 2/3) — tabs + content            -->
+  <!-- ══════════════════════════════════════════════════ -->
+  <div class="workspace">
+
+    <!-- ── TABS ── -->
+    <div class="tabs">
+      <button class="tab-btn active" data-tab="mechanics">Mechanics</button>
+      <button class="tab-btn"        data-tab="visual">Visual</button>
+      <button class="tab-btn"        data-tab="levels">Levels</button>
+      <button class="tab-btn"        data-tab="visual-editor">🖼 Visual Editor</button>
+    </div>
+
+    <!-- ── LOAD BAR ── -->
+    <div class="load-bar">
+      <label>Load build</label>
+      <select id="load-build-select">
+        <option value="">-- select a previous build --</option>
+      </select>
+      <div class="load-bar-divider"></div>
+      <button class="reset-btn" id="reset-defaults-btn">Reset to Defaults</button>
+    </div>
 
   <!-- ══════════════════════════════════════════════════ -->
   <!-- TAB: MECHANICS                                     -->
@@ -365,6 +408,316 @@
     </button>
 
   </div>
+
+  <!-- ══════════════════════════════════════════════════ -->
+  <!-- VISUAL EDITOR TAB                                -->
+  <!-- ══════════════════════════════════════════════════ -->
+  <style>
+    .ve-section    { background:var(--card); border:1px solid var(--border); border-radius:var(--radius); padding:18px; margin-bottom:16px; }
+    .ve-path-btns  { display:flex; gap:12px; margin-top:12px; }
+    .ve-path-btn   { flex:1; padding:14px 10px; border:2px solid var(--border); background:var(--bg); color:var(--text);
+                     border-radius:var(--radius); cursor:pointer; font-size:14px; text-align:center; transition:.15s; }
+    .ve-path-btn:hover, .ve-path-btn.selected { border-color:#6366f1; background:#6366f110; }
+    .ve-drop-zone  { border:2px dashed var(--border); border-radius:var(--radius); padding:24px; text-align:center;
+                     cursor:pointer; color:var(--muted); transition:.15s; position:relative; }
+    .ve-drop-zone:hover { border-color:#6366f1; color:var(--text); }
+    .ve-drop-zone.has-image { padding:0; overflow:hidden; cursor:default; }
+    .ve-canvas-wrap { position:relative; display:inline-block; }
+    .ve-canvas-wrap canvas { display:block; }
+    .ve-canvas-wrap .ve-draw-canvas { position:absolute; top:0; left:0; cursor:crosshair; }
+    .ve-tools      { display:flex; gap:8px; align-items:center; padding:8px 0; flex-wrap:wrap; }
+    .ve-tool-btn   { padding:5px 12px; font-size:12px; border:1px solid var(--border); background:var(--bg);
+                     color:var(--text); border-radius:var(--radius); cursor:pointer; }
+    .ve-tool-btn.active { border-color:#6366f1; background:#6366f120; }
+    .ve-tool-btn:hover  { border-color:var(--text); }
+    .ve-label      { font-size:12px; font-weight:600; color:var(--muted); text-transform:uppercase; letter-spacing:.05em; margin-bottom:6px; }
+    .ve-suggestion { display:block; width:100%; text-align:left; padding:10px 12px; margin-bottom:6px;
+                     background:var(--bg); border:1px solid var(--border); border-radius:var(--radius);
+                     color:var(--text); font-size:13px; cursor:pointer; transition:.15s; }
+    .ve-suggestion:hover, .ve-suggestion.selected { border-color:#6366f1; background:#6366f110; }
+    .ve-variations { display:flex; gap:10px; flex-wrap:wrap; margin-top:10px; }
+    .ve-variation  { position:relative; cursor:pointer; border:3px solid transparent; border-radius:var(--radius); overflow:hidden; }
+    .ve-variation:hover, .ve-variation.selected { border-color:#6366f1; }
+    .ve-variation img { display:block; width:120px; height:160px; object-fit:cover; }
+    .ve-asset-checks { display:flex; gap:16px; margin:10px 0; }
+    .ve-asset-checks label { display:flex; align-items:center; gap:6px; cursor:pointer; font-size:14px; }
+    .ve-asset-card  { border:2px solid var(--border); border-radius:var(--radius); padding:8px; cursor:pointer;
+                      background:var(--bg); transition:.15s; text-align:center; width:110px; }
+    .ve-asset-card:hover  { border-color:#6366f1; }
+    .ve-asset-card.selected { border-color:#6366f1; background:#6366f110; }
+    .ve-asset-card img  { width:90px; height:120px; object-fit:cover; border-radius:3px; display:block; margin:0 auto 6px; }
+    .ve-asset-card .ve-ac-name { font-size:12px; font-weight:600; color:var(--text); }
+    .ve-asset-card .ve-ac-desc { font-size:11px; color:var(--muted); margin-top:2px; }
+    .ve-history    { list-style:none; padding:0; margin:0; }
+    .ve-history li { display:flex; align-items:center; gap:10px; padding:8px 10px; border:1px solid var(--border);
+                     border-radius:var(--radius); margin-bottom:6px; background:var(--bg); font-size:13px; }
+    .ve-badge      { font-size:11px; font-weight:700; padding:2px 7px; border-radius:999px; }
+    .ve-badge.A    { background:#0ea5e920; color:#0ea5e9; border:1px solid #0ea5e940; }
+    .ve-badge.B    { background:#a855f720; color:#a855f7; border:1px solid #a855f740; }
+    .ve-badge.ok   { background:#22c55e20; color:#22c55e; border:1px solid #22c55e40; }
+    .ve-status     { font-size:12px; color:var(--muted); }
+    .ve-thumb      { width:32px; height:42px; object-fit:cover; border-radius:3px; border:1px solid var(--border); flex-shrink:0; }
+    .ve-apply-btn  { width:100%; padding:13px; background:#6366f1; color:#fff; border:none; border-radius:var(--radius);
+                     font-size:15px; font-weight:600; cursor:pointer; margin-top:8px; transition:.15s; }
+    .ve-apply-btn:hover { background:#4f46e5; }
+    .ve-apply-btn:disabled { background:var(--card); color:var(--muted); cursor:default; }
+    .ve-small-btn  { padding:6px 14px; font-size:13px; border:1px solid var(--border); background:var(--bg);
+                     color:var(--text); border-radius:var(--radius); cursor:pointer; transition:.15s; }
+    .ve-small-btn:hover  { border-color:#6366f1; }
+    .ve-small-btn.primary { background:#6366f1; border-color:#6366f1; color:#fff; }
+    .ve-small-btn.primary:hover { background:#4f46e5; }
+    .ve-small-btn:disabled { opacity:.5; cursor:default; }
+    .ve-note       { font-size:12px; color:var(--muted); margin-top:4px; }
+    .ve-step-header { font-size:14px; font-weight:600; margin-bottom:10px; display:flex; align-items:center; gap:8px; }
+    .ve-step-num   { width:22px; height:22px; border-radius:50%; background:#6366f1; color:#fff;
+                     font-size:11px; font-weight:700; display:inline-flex; align-items:center; justify-content:center; flex-shrink:0; }
+    .ve-divider    { border:none; border-top:1px solid var(--border); margin:16px 0; }
+  </style>
+
+  <div class="tab-content" id="tab-visual-editor">
+
+    <!-- ── Asset Library ── -->
+    <div class="ve-section">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px">
+        <h2 style="margin:0">Project Assets</h2>
+        <button class="ve-small-btn" onclick="veRefreshAssetLibrary()">↻ Refresh</button>
+      </div>
+      <p class="ve-note" style="margin-bottom:10px">Current files in <code>static/assets/project/</code> — these are embedded in every Build.</p>
+      <div id="ve-library-grid" style="display:flex; gap:14px; flex-wrap:wrap"></div>
+    </div>
+
+    <!-- ── Pending Changes (to be built) ── -->
+    <div class="ve-section">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px">
+        <h2 style="margin:0">📋 Pending Changes</h2>
+        <button class="ve-small-btn primary" onclick="veShowForm()">+ New Change</button>
+      </div>
+      <ul class="ve-history" id="ve-pending-list"></ul>
+      <p class="ve-note" id="ve-pending-empty">No pending changes. Click "+ New Change" to start.</p>
+    </div>
+
+    <!-- ── Applied Changes (grouped by build) ── -->
+    <div class="ve-section">
+      <h2 style="margin-bottom:12px">✓ Applied Changes</h2>
+      <div id="ve-applied-list"></div>
+      <p class="ve-note" id="ve-applied-empty">No builds yet. Pending changes will move here after a successful build.</p>
+    </div>
+
+    <!-- ── New Change Form ── -->
+    <div class="ve-section" id="ve-form" style="display:none">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px">
+        <h2 style="margin:0">New Change</h2>
+        <button class="ve-tool-btn" onclick="veHideForm()">✕ Cancel</button>
+      </div>
+
+      <!-- Step 1 — Choose path (shown immediately) -->
+      <div id="ve-step-path">
+        <div class="ve-step-header"><span class="ve-step-num">1</span> What do you want to change?</div>
+        <div class="ve-path-btns">
+          <button class="ve-path-btn" id="ve-btn-A" onclick="veSelectPath('A')">
+            <div style="font-size:22px">📐</div>
+            <div style="font-weight:600; margin-top:6px">Positioning &amp; Layout</div>
+            <div style="font-size:12px; color:var(--muted); margin-top:4px">Move cards, change grid, resize areas</div>
+          </button>
+          <button class="ve-path-btn" id="ve-btn-B" onclick="veSelectPath('B')">
+            <div style="font-size:22px">🎨</div>
+            <div style="font-weight:600; margin-top:6px">Style from Reference</div>
+            <div style="font-size:12px; color:var(--muted); margin-top:4px">Generate assets from a reference image</div>
+          </button>
+          <button class="ve-path-btn" id="ve-btn-C" onclick="veSelectPath('C')">
+            <div style="font-size:22px">✏️</div>
+            <div style="font-weight:600; margin-top:6px">Edit an Asset</div>
+            <div style="font-size:12px; color:var(--muted); margin-top:4px">Select an asset and describe the change</div>
+          </button>
+        </div>
+      </div>
+
+      <!-- Screenshot section (shown for Path A and B) -->
+      <div id="ve-screenshot-section" style="display:none; margin-top:16px">
+        <hr class="ve-divider">
+        <div class="ve-step-header"><span class="ve-step-num">2</span> Upload a screenshot of the current build</div>
+        <div class="ve-drop-zone" id="ve-drop-zone" onclick="document.getElementById('ve-file-input').click()">
+          <p>Click to upload or drag &amp; drop a screenshot (PNG / JPG)</p>
+          <input type="file" id="ve-file-input" accept="image/*" style="display:none">
+        </div>
+
+        <!-- Canvas + tools (shown after upload) -->
+        <div id="ve-canvas-area" style="display:none; margin-top:12px">
+          <div class="ve-tools">
+            <span class="ve-label">Draw:</span>
+            <button class="ve-tool-btn active" id="ve-tool-pen"    onclick="veSetTool('pen')">✏ Pen</button>
+            <button class="ve-tool-btn"        id="ve-tool-arrow"  onclick="veSetTool('arrow')">→ Arrow</button>
+            <button class="ve-tool-btn"        id="ve-tool-rect"   onclick="veSetTool('rect')">▭ Box</button>
+            <button class="ve-tool-btn"        id="ve-tool-erase"  onclick="veSetTool('erase')">⌫ Erase</button>
+            <button class="ve-tool-btn"        onclick="veClearDrawing()">Clear</button>
+            <input type="color" id="ve-draw-color" value="#ff0000" title="Color" style="width:28px;height:28px;border:none;padding:0;cursor:pointer;border-radius:4px">
+            <input type="range" id="ve-draw-size"  min="2" max="20" value="4" style="width:80px" title="Brush size">
+            <button class="ve-tool-btn primary" id="ve-save-drawing-btn" onclick="veSaveDrawing()" style="margin-left:auto">💾 Save Drawing</button>
+          </div>
+          <div style="display:flex; gap:12px; align-items:flex-start; flex-wrap:wrap">
+            <div>
+              <div class="ve-note" style="margin-bottom:4px; text-align:center">Original (clean)</div>
+              <div class="ve-canvas-wrap" id="ve-canvas-wrap">
+                <canvas id="ve-bg-canvas"></canvas>
+                <canvas id="ve-draw-canvas" class="ve-draw-canvas"></canvas>
+              </div>
+            </div>
+            <div id="ve-composite-wrap" style="display:none">
+              <div class="ve-note" style="margin-bottom:4px; text-align:center; color:#22c55e; font-weight:600">✓ What Claude will see</div>
+              <img id="ve-composite-img" style="display:block; border-radius:var(--radius); border:2px solid #22c55e" />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── PATH A ── -->
+      <div id="ve-path-a-form" style="display:none; margin-top:16px">
+        <hr class="ve-divider">
+        <div class="ve-step-header"><span class="ve-step-num">3</span> Describe the layout change</div>
+        <div class="ve-label">Draw on the screenshot above, then add a note</div>
+        <textarea id="ve-text-note" style="width:100%;height:80px;resize:vertical;padding:8px;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:var(--radius);font-size:13px;box-sizing:border-box"
+          placeholder="Optional: describe what you want changed. E.g. 'Move the top row to 4 cards, spread them wider'"></textarea>
+        <div id="ve-a-status" class="ve-note" style="margin-top:6px"></div>
+        <button class="ve-apply-btn" id="ve-a-apply-btn" onclick="veApplyPathA()">Apply Layout Change to Level 1</button>
+        <p class="ve-note" style="margin-top:8px">This will call Claude Vision and update the form fields in the Levels tab.</p>
+
+        <!-- Claude's reasoning / result -->
+        <div id="ve-a-result" style="display:none; margin-top:16px; padding:12px; background:var(--surface); border:1px solid var(--border); border-radius:var(--radius)">
+          <div style="font-size:12px; color:var(--muted); text-transform:uppercase; letter-spacing:1px; margin-bottom:8px; font-weight:600">✓ Claude's Output</div>
+          <div id="ve-a-result-content" style="font-size:13px; line-height:1.6"></div>
+        </div>
+      </div>
+
+      <!-- ── PATH B ── -->
+      <div id="ve-path-b-form" style="display:none; margin-top:16px">
+        <hr class="ve-divider">
+
+        <!-- B Step 1 — Rough prompt -->
+        <div id="ve-b-prompt-step">
+          <div class="ve-step-header"><span class="ve-step-num">3</span> Describe the visual style you want</div>
+          <textarea id="ve-rough-prompt" style="width:100%;height:70px;resize:vertical;padding:8px;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:var(--radius);font-size:13px;box-sizing:border-box"
+            placeholder="E.g. 'dark mystical forest background with glowing plants'"></textarea>
+          <div style="margin-top:8px; display:flex; gap:8px; align-items:center">
+            <button class="ve-small-btn primary" id="ve-enhance-btn" onclick="veEnhancePrompt()">✨ Suggest Better Prompts</button>
+            <button class="ve-small-btn" id="ve-skip-enhance-btn" onclick="veSkipEnhance()">Skip → Use As-Is</button>
+          </div>
+          <div id="ve-b-enhance-status" class="ve-note" style="margin-top:6px"></div>
+        </div>
+
+        <!-- B Step 2 — Prompt suggestions -->
+        <div id="ve-b-suggestions-step" style="display:none; margin-top:14px">
+          <hr class="ve-divider">
+          <div class="ve-step-header"><span class="ve-step-num">4</span> Pick a refined prompt (or edit)</div>
+          <div id="ve-suggestions-list"></div>
+          <div style="display:flex; gap:8px; margin-top:8px">
+            <button class="ve-small-btn primary" id="ve-gen-ref-btn" onclick="veGenerateReference()" disabled>Generate Reference Image</button>
+            <button class="ve-small-btn" onclick="veBackToPrompt()">← Back</button>
+          </div>
+          <div id="ve-b-gen-status" class="ve-note" style="margin-top:6px"></div>
+        </div>
+
+        <!-- B Step 3 — Variations -->
+        <div id="ve-b-variations-step" style="display:none; margin-top:14px">
+          <hr class="ve-divider">
+          <div class="ve-step-header"><span class="ve-step-num">5</span> Pick a reference image</div>
+          <div class="ve-variations" id="ve-variations-list"></div>
+          <div style="margin-top:10px; display:flex; gap:8px">
+            <button class="ve-small-btn primary" id="ve-ref-confirm-btn" onclick="veConfirmReference()" disabled>Use This Reference</button>
+            <button class="ve-small-btn" onclick="veRegenerateReference()">↻ Regenerate</button>
+          </div>
+          <p class="ve-note">After selecting: you can draw annotations on the reference above before applying.</p>
+        </div>
+
+        <!-- B Step 4 — Asset browser + selection -->
+        <div id="ve-b-assets-step" style="display:none; margin-top:14px">
+          <hr class="ve-divider">
+          <div class="ve-step-header"><span class="ve-step-num">6</span> Select assets to replace</div>
+          <p class="ve-note" style="margin-bottom:10px">These are the current project files. Check the ones you want regenerated in the style of the reference image.</p>
+          <div id="ve-asset-browser" style="display:flex; gap:14px; flex-wrap:wrap; margin-bottom:12px">
+            <!-- asset cards injected by JS -->
+          </div>
+          <div id="ve-b-asset-status" class="ve-note" style="margin-top:6px"></div>
+          <button class="ve-apply-btn" id="ve-b-apply-btn" onclick="veApplyPathB()">Generate &amp; Save Assets</button>
+          <p class="ve-note" style="margin-top:8px">New PNGs are saved to <code>static/assets/project/</code> and embedded automatically in the next Build.</p>
+        </div>
+      </div>
+
+      <!-- ── PATH C — Direct Asset Edit ── -->
+      <div id="ve-path-c-form" style="display:none; margin-top:16px">
+        <hr class="ve-divider">
+
+        <!-- C Step 1 — Pick asset -->
+        <div class="ve-step-header"><span class="ve-step-num">2</span> Select the asset to edit</div>
+        <p class="ve-note" style="margin-bottom:10px">Click an asset to select it.</p>
+        <div id="ve-c-asset-picker" style="display:flex; gap:14px; flex-wrap:wrap; margin-bottom:4px">
+          <!-- thumbnails injected by JS -->
+        </div>
+
+        <!-- C Step 2 — Prompt (shown after asset picked) -->
+        <div id="ve-c-prompt-section" style="display:none; margin-top:14px">
+          <hr class="ve-divider">
+          <div class="ve-step-header"><span class="ve-step-num">3</span> Describe the change</div>
+          <textarea id="ve-c-prompt" style="width:100%;height:80px;resize:vertical;padding:8px;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:var(--radius);font-size:13px;box-sizing:border-box"
+            placeholder="E.g. 'Make it a red velvet table instead of green felt' or 'Change the card back to gold floral art deco'"></textarea>
+          <div style="margin-top:8px; display:flex; gap:8px; align-items:center">
+            <button class="ve-small-btn primary" id="ve-c-gen-btn" onclick="veEditAsset()">Generate Preview</button>
+          </div>
+          <div id="ve-c-gen-status" class="ve-note" style="margin-top:6px"></div>
+        </div>
+
+        <!-- C Step 3 — Before / After preview + approve (shown after generation) -->
+        <div id="ve-c-preview-section" style="display:none; margin-top:14px">
+          <hr class="ve-divider">
+          <div class="ve-step-header"><span class="ve-step-num">4</span> Review the result</div>
+          <div style="display:flex; gap:16px; flex-wrap:wrap; margin-bottom:12px">
+            <div>
+              <div class="ve-note" style="margin-bottom:4px; text-align:center">Before</div>
+              <img id="ve-c-before-img" style="display:block; border-radius:var(--radius); border:1px solid var(--border); max-height:200px; width:auto">
+            </div>
+            <div>
+              <div class="ve-note" style="margin-bottom:4px; text-align:center; color:#6366f1; font-weight:600">After</div>
+              <img id="ve-c-after-img" style="display:block; border-radius:var(--radius); border:2px solid #6366f1; max-height:200px; width:auto">
+            </div>
+          </div>
+          <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap">
+            <button class="ve-apply-btn" id="ve-c-approve-btn" onclick="veApproveEditAsset()" style="width:auto; padding:10px 24px">Approve &amp; Save</button>
+            <button class="ve-small-btn" id="ve-c-retry-btn" onclick="veRetryEditAsset()">↻ Try Again</button>
+          </div>
+          <div id="ve-c-approve-status" class="ve-note" style="margin-top:8px"></div>
+        </div>
+      </div>
+
+    </div><!-- #ve-form -->
+
+    <!-- ── Build with changes ── -->
+    <div class="ve-section">
+      <h2>Build</h2>
+      <p class="ve-note" style="margin-bottom:10px">Applied changes are automatically included when you click Generate Ad (footer button), or use the button below.</p>
+      <div id="ve-asset-preview" style="margin-bottom:12px; display:none">
+        <div class="ve-label">Stored image assets (will be embedded in next build):</div>
+        <div id="ve-asset-preview-items" style="display:flex; gap:10px; flex-wrap:wrap; margin-top:8px"></div>
+      </div>
+      <button class="ve-apply-btn" onclick="onGenerate()">Build Ad with All Changes</button>
+    </div>
+
+    <!-- ── Server Log ── -->
+    <div class="ve-section">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px">
+        <h2 style="margin:0">Server Log</h2>
+        <div style="display:flex; gap:8px">
+          <button class="ve-small-btn" onclick="veRefreshLogs()">↻ Refresh</button>
+          <button class="ve-small-btn" onclick="veClearLogView()">Clear view</button>
+        </div>
+      </div>
+      <div id="ve-log-box" style="background:#0d1117; border:1px solid var(--border); border-radius:var(--radius); padding:12px; height:220px; overflow-y:auto; font-family:monospace; font-size:12px; line-height:1.6; color:#e6edf3; white-space:pre-wrap; word-break:break-all;">
+        <span style="color:#6e7681">Log will appear here — click Refresh or perform an action.</span>
+      </div>
+      <p class="ve-note" style="margin-top:6px">Shows the last 60 lines from <code>logs/server.log</code>. Auto-refreshes after each API call.</p>
+    </div>
+
+  </div><!-- #tab-visual-editor -->
+
+  </div><!-- .workspace -->
 
 </div><!-- .main -->
 
@@ -839,6 +1192,87 @@ function buildConfig() {
 // ============================================================
 var lastPlayUrl = null;
 
+// ============================================================
+// PREVIEW PANEL
+// ============================================================
+
+function previewReload() {
+  var iframe = document.getElementById('preview-iframe');
+  if (iframe.src && iframe.src !== 'about:blank') {
+    iframe.src = iframe.src; // reload
+  }
+}
+
+function veCapturePreview() {
+  var iframe = document.getElementById('preview-iframe');
+  if (!iframe.src || iframe.src === 'about:blank') {
+    alert('No preview loaded. Generate a build first.');
+    return;
+  }
+
+  try {
+    var iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
+    var canvas = iframeDoc.querySelector('canvas');
+    if (!canvas) {
+      alert('Could not find canvas in preview. Make sure the build is fully loaded.');
+      return;
+    }
+
+    // For PixiJS WebGL, we need to wait for the next animation frame and use getImageData
+    setTimeout(function() {
+      try {
+        // Try direct canvas capture first (works for 2D canvas)
+        var dataUrl = canvas.toDataURL('image/png');
+
+        // Check if it's a blank/black image (WebGL issue)
+        if (dataUrl.length < 1000) {
+          // Fallback: use html2canvas or manual screenshot
+          alert('WebGL canvas capture failed. Please use browser screenshot (Win+Shift+S or Cmd+Shift+4) and drag/drop the image into the Visual Editor screenshot area.');
+
+          // Switch to Visual Editor tab anyway so they can drag/drop
+          document.querySelectorAll('.tab-btn').forEach(function(b) { b.classList.remove('active'); });
+          document.querySelectorAll('.tab-content').forEach(function(c) { c.classList.remove('active'); });
+          document.querySelector('[data-tab="visual-editor"]').classList.add('active');
+          document.getElementById('tab-visual-editor').classList.add('active');
+          veShowForm();
+          veSelectPath('B');
+          return;
+        }
+
+        var screenshotB64 = dataUrl.split(',')[1];
+
+        // Switch to Visual Editor tab
+        document.querySelectorAll('.tab-btn').forEach(function(b) { b.classList.remove('active'); });
+        document.querySelectorAll('.tab-content').forEach(function(c) { c.classList.remove('active'); });
+        document.querySelector('[data-tab="visual-editor"]').classList.add('active');
+        document.getElementById('tab-visual-editor').classList.add('active');
+
+        // Open New Change form and select Path B
+        veShowForm();
+        veSelectPath('B');
+
+        // Auto-load the screenshot
+        veScreenshotB64 = screenshotB64;
+        veSetupCanvases(dataUrl);
+
+        // Success feedback
+        setTimeout(function() {
+          var note = 'Screenshot captured! You can now:\n- Generate a reference image\n- Draw annotations\n- Or just use as-is';
+          alert(note);
+        }, 300);
+      } catch (innerErr) {
+        alert('Capture failed: ' + innerErr.message + '\n\nUse drag & drop instead: take a screenshot and drag it into the upload area.');
+      }
+    }, 100); // Small delay for WebGL to finish rendering
+  } catch (err) {
+    alert('Could not access preview: ' + err.message);
+  }
+}
+
+// ============================================================
+// GENERATE & DOWNLOAD
+// ============================================================
+
 function onGenerate() {
   var btn     = document.getElementById('generate-btn');
   var errEl   = document.getElementById('error-msg');
@@ -865,6 +1299,15 @@ function onGenerate() {
     document.getElementById('preview-btn').href = lastPlayUrl;
     document.getElementById('result-msg').textContent = 'Build ready! (' + data.run_id + ')';
     resultEl.classList.add('visible');
+
+    // Load into preview panel
+    var iframe = document.getElementById('preview-iframe');
+    var placeholder = document.getElementById('preview-placeholder');
+    iframe.src = data.play_url;
+    placeholder.style.display = 'none';
+
+    // Move pending changes to applied (grouped by this build)
+    veMovePendingToApplied(data.run_id, data.run_id);
   })
   .catch(function(err) {
     errEl.textContent = 'Error: ' + err.message;
@@ -901,6 +1344,9 @@ document.querySelectorAll('.tab-btn').forEach(function(btn) {
     document.querySelectorAll('.tab-content').forEach(function(c) { c.classList.remove('active'); });
     btn.classList.add('active');
     document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
+    if (btn.dataset.tab === 'visual-editor') {
+      veRefreshAssetLibrary();
+    }
   });
 });
 
@@ -975,6 +1421,1058 @@ document.getElementById('reset-defaults-btn').addEventListener('click', function
 buildColorFields();
 loadDefaults();
 populateBuildList();
+veRenderPending();
+veRenderApplied();
+
+// ============================================================
+// VISUAL EDITOR
+// ============================================================
+
+// ── State ──────────────────────────────────────────────────
+var veImageAssets     = {};  // { background: base64, card_back: base64, felt: base64 }
+var vePendingChanges  = [];  // changes not yet built (can be deleted)
+var veAppliedChanges  = [];  // grouped by build: [{run_id, run_name, changes: [...]}]
+var veCurrentPath     = null;
+var veScreenshotB64  = null;
+var veCompositeB64   = null;  // screenshot + drawing merged — sent to Claude
+var veChosenPrompt   = null;
+var veChosenRefB64   = null;
+var veEditAssetName  = null;  // Path C: which asset is being edited
+var veEditResultB64  = null;  // Path C: last generated preview (not yet saved)
+var veDrawTool       = 'pen';
+var veDrawing        = false;
+var veLastX          = 0;
+var veLastY          = 0;
+
+// ── Show / hide form ───────────────────────────────────────
+function veShowForm() {
+  var form = document.getElementById('ve-form');
+  // If form is open and has work in progress, confirm before discarding
+  if (form.style.display !== 'none' && (veScreenshotB64 || veEditAssetName)) {
+    if (!confirm('You have an unsaved change in progress.\nDiscard it and start a new one?')) {
+      form.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      return;
+    }
+  }
+  veResetForm();
+  form.style.display = 'block';
+  form.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+function veHideForm() {
+  document.getElementById('ve-form').style.display = 'none';
+  veResetForm();
+}
+function veResetForm() {
+  veCurrentPath    = null;
+  veScreenshotB64  = null;
+  veCompositeB64   = null;
+  veChosenPrompt   = null;
+  veChosenRefB64   = null;
+  veEditAssetName  = null;
+  veEditResultB64  = null;
+  document.getElementById('ve-drop-zone').innerHTML =
+    '<p>Click to upload or drag &amp; drop a screenshot (PNG / JPG)</p>' +
+    '<input type="file" id="ve-file-input" accept="image/*" style="display:none">';
+  document.getElementById('ve-drop-zone').classList.remove('has-image');
+  document.getElementById('ve-drop-zone').onclick = function() {
+    document.getElementById('ve-file-input').click();
+  };
+  veRewireFileInput();
+  document.getElementById('ve-canvas-area').style.display        = 'none';
+  document.getElementById('ve-composite-wrap').style.display     = 'none';
+  var saveBtn = document.getElementById('ve-save-drawing-btn');
+  if (saveBtn) { saveBtn.textContent = '💾 Save Drawing'; saveBtn.style.background = ''; saveBtn.style.borderColor = ''; saveBtn.style.color = ''; }
+  document.getElementById('ve-screenshot-section').style.display = 'none';
+  document.getElementById('ve-path-a-form').style.display        = 'none';
+  document.getElementById('ve-path-b-form').style.display        = 'none';
+  document.getElementById('ve-path-c-form').style.display        = 'none';
+  document.getElementById('ve-a-result').style.display           = 'none';
+  document.getElementById('ve-b-suggestions-step').style.display = 'none';
+  document.getElementById('ve-b-variations-step').style.display  = 'none';
+  document.getElementById('ve-b-assets-step').style.display      = 'none';
+  document.getElementById('ve-c-prompt-section').style.display   = 'none';
+  document.getElementById('ve-c-preview-section').style.display  = 'none';
+  document.getElementById('ve-c-asset-picker').innerHTML         = '';
+  document.getElementById('ve-text-note').value     = '';
+  document.getElementById('ve-rough-prompt').value  = '';
+  document.getElementById('ve-a-status').textContent = '';
+  document.getElementById('ve-b-enhance-status').textContent = '';
+  document.getElementById('ve-b-gen-status').textContent = '';
+  document.getElementById('ve-c-gen-status').textContent = '';
+  document.getElementById('ve-c-approve-status').textContent = '';
+  document.querySelectorAll('.ve-path-btn').forEach(function(b) { b.classList.remove('selected'); });
+}
+
+// ── File input wiring ──────────────────────────────────────
+function veRewireFileInput() {
+  var inp = document.getElementById('ve-file-input');
+  if (!inp) return;
+  inp.addEventListener('change', function() {
+    var file = inp.files && inp.files[0];
+    if (file) veLoadImage(file);
+  });
+}
+veRewireFileInput();
+
+// Drag & drop on drop zone
+// Drag & drop for screenshot upload
+(function() {
+  var dropZone = document.getElementById('ve-drop-zone');
+  if (!dropZone) {
+    console.error('ve-drop-zone not found!');
+    return;
+  }
+
+  dropZone.addEventListener('dragover', function(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    this.style.borderColor = '#6366f1';
+    console.log('dragover');
+  });
+
+  dropZone.addEventListener('dragleave', function(e) {
+    e.stopPropagation();
+    this.style.borderColor = '';
+    console.log('dragleave');
+  });
+
+  dropZone.addEventListener('drop', function(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    this.style.borderColor = '';
+    console.log('drop', e.dataTransfer.files);
+    var file = e.dataTransfer.files && e.dataTransfer.files[0];
+    if (file && file.type.startsWith('image/')) {
+      veLoadImage(file);
+    } else {
+      console.warn('No valid image file in drop');
+    }
+  });
+
+  console.log('Drag/drop listeners attached to ve-drop-zone');
+})();
+
+function veLoadImage(file) {
+  var reader = new FileReader();
+  reader.onload = function(e) {
+    veScreenshotB64 = e.target.result.split(',')[1]; // strip data-URL prefix
+    veSetupCanvases(e.target.result);
+  };
+  reader.readAsDataURL(file);
+}
+
+// ── Canvas setup ───────────────────────────────────────────
+function veCalcDisplaySize(w, h) {
+  var maxH = 260;
+  var maxW = (document.getElementById('ve-form').offsetWidth || 400) - 48;
+  var scale = Math.min(1, maxH / h, maxW / w);
+  return { dw: Math.round(w * scale), dh: Math.round(h * scale) };
+}
+
+function veSetupCanvases(dataUrl) {
+  var bgCvs = document.getElementById('ve-bg-canvas');
+  var drCvs = document.getElementById('ve-draw-canvas');
+  var img   = new Image();
+  img.onload = function() {
+    var w = img.naturalWidth, h = img.naturalHeight;
+    var d = veCalcDisplaySize(w, h);
+    // Internal resolution = full (accurate drawing coords)
+    bgCvs.width  = drCvs.width  = w;
+    bgCvs.height = drCvs.height = h;
+    // Display size = constrained thumbnail
+    bgCvs.style.width  = drCvs.style.width  = d.dw + 'px';
+    bgCvs.style.height = drCvs.style.height = d.dh + 'px';
+    bgCvs.getContext('2d').drawImage(img, 0, 0);
+    drCvs.getContext('2d').clearRect(0, 0, w, h);
+    document.getElementById('ve-canvas-area').style.display = 'block';
+    // Reveal the appropriate path form now that a screenshot is loaded
+    if (veCurrentPath === 'A') document.getElementById('ve-path-a-form').style.display = 'block';
+    if (veCurrentPath === 'B') document.getElementById('ve-path-b-form').style.display = 'block';
+    veBindDrawEvents(drCvs);
+  };
+  img.src = dataUrl;
+}
+
+function veLoadRefIntoCanvas(dataUrlOrB64) {
+  var src = dataUrlOrB64.startsWith('data:') ? dataUrlOrB64 : 'data:image/png;base64,' + dataUrlOrB64;
+  var bgCvs = document.getElementById('ve-bg-canvas');
+  var drCvs = document.getElementById('ve-draw-canvas');
+  var img   = new Image();
+  img.onload = function() {
+    var w = img.naturalWidth, h = img.naturalHeight;
+    var d = veCalcDisplaySize(w, h);
+    bgCvs.width  = drCvs.width  = w;
+    bgCvs.height = drCvs.height = h;
+    bgCvs.style.width  = drCvs.style.width  = d.dw + 'px';
+    bgCvs.style.height = drCvs.style.height = d.dh + 'px';
+    bgCvs.getContext('2d').drawImage(img, 0, 0);
+    drCvs.getContext('2d').clearRect(0, 0, w, h);
+  };
+  img.src = src;
+}
+
+// ── Drawing tools ──────────────────────────────────────────
+function veSaveDrawing() {
+  var bgCvs = document.getElementById('ve-bg-canvas');
+  var drCvs = document.getElementById('ve-draw-canvas');
+  if (!bgCvs || !drCvs) return;
+
+  // Check drawing canvas has any marks
+  var drData = drCvs.getContext('2d').getImageData(0, 0, drCvs.width, drCvs.height).data;
+  var hasMarks = false;
+  for (var i = 3; i < drData.length; i += 4) { if (drData[i] > 0) { hasMarks = true; break; } }
+  if (!hasMarks) {
+    alert('Draw something on the screenshot first, then save.');
+    return;
+  }
+
+  // Composite: draw canvas on top of bg canvas → one merged image
+  var merged = document.createElement('canvas');
+  merged.width  = bgCvs.width;
+  merged.height = bgCvs.height;
+  var ctx = merged.getContext('2d');
+  ctx.drawImage(bgCvs, 0, 0);
+  ctx.drawImage(drCvs, 0, 0);
+
+  var dataUrl = merged.toDataURL('image/png');
+  veCompositeB64 = dataUrl.split(',')[1];
+
+  // Show composite preview at same display size as bg canvas
+  var compWrap = document.getElementById('ve-composite-wrap');
+  var compImg  = document.getElementById('ve-composite-img');
+  compImg.src = dataUrl;
+  compImg.style.width  = bgCvs.style.width;
+  compImg.style.height = bgCvs.style.height;
+  compWrap.style.display = 'block';
+
+  // Visual feedback on button
+  var btn = document.getElementById('ve-save-drawing-btn');
+  btn.textContent = '✓ Drawing Saved';
+  btn.style.background = '#22c55e';
+  btn.style.borderColor = '#22c55e';
+  btn.style.color = '#fff';
+
+  veLog('Drawing saved — composite ready to send to Claude');
+}
+
+function veSetTool(t) {
+  veDrawTool = t;
+  document.querySelectorAll('[id^="ve-tool-"]').forEach(function(b) { b.classList.remove('active'); });
+  var btn = document.getElementById('ve-tool-' + t);
+  if (btn) btn.classList.add('active');
+}
+
+function veClearDrawing() {
+  var drCvs = document.getElementById('ve-draw-canvas');
+  if (drCvs) drCvs.getContext('2d').clearRect(0, 0, drCvs.width, drCvs.height);
+}
+
+function veBindDrawEvents(cvs) {
+  // Remove old listeners by cloning
+  var newCvs = cvs.cloneNode(false);
+  cvs.parentNode.replaceChild(newCvs, cvs);
+  newCvs.id = 've-draw-canvas';
+  newCvs.className = cvs.className;
+
+  function pos(e) {
+    var r = newCvs.getBoundingClientRect();
+    var scaleX = newCvs.width  / r.width;
+    var scaleY = newCvs.height / r.height;
+    var clientX = e.touches ? e.touches[0].clientX : e.clientX;
+    var clientY = e.touches ? e.touches[0].clientY : e.clientY;
+    return { x: (clientX - r.left) * scaleX, y: (clientY - r.top) * scaleY };
+  }
+
+  function start(e) {
+    e.preventDefault();
+    veDrawing = true;
+    var p = pos(e);
+    veLastX = p.x; veLastY = p.y;
+  }
+  function move(e) {
+    if (!veDrawing) return;
+    e.preventDefault();
+    var p   = pos(e);
+    var ctx = newCvs.getContext('2d');
+    var col = document.getElementById('ve-draw-color').value;
+    var sz  = parseInt(document.getElementById('ve-draw-size').value) || 4;
+    if (veDrawTool === 'erase') {
+      ctx.globalCompositeOperation = 'destination-out';
+      ctx.lineWidth = sz * 4;
+    } else {
+      ctx.globalCompositeOperation = 'source-over';
+      ctx.strokeStyle = col;
+      ctx.lineWidth   = sz;
+      ctx.lineCap     = 'round';
+      ctx.lineJoin    = 'round';
+    }
+    ctx.beginPath();
+    ctx.moveTo(veLastX, veLastY);
+    ctx.lineTo(p.x, p.y);
+    ctx.stroke();
+    veLastX = p.x; veLastY = p.y;
+  }
+  function end() {
+    veDrawing = false;
+    var ctx = newCvs.getContext('2d');
+    ctx.globalCompositeOperation = 'source-over';
+  }
+
+  newCvs.addEventListener('mousedown',  start);
+  newCvs.addEventListener('mousemove',  move);
+  newCvs.addEventListener('mouseup',    end);
+  newCvs.addEventListener('mouseleave', end);
+  newCvs.addEventListener('touchstart', start, { passive: false });
+  newCvs.addEventListener('touchmove',  move,  { passive: false });
+  newCvs.addEventListener('touchend',   end);
+}
+
+function veGetAnnotations() {
+  var drCvs = document.getElementById('ve-draw-canvas');
+  if (!drCvs) return null;
+  // Return null if canvas is blank
+  var data = drCvs.getContext('2d').getImageData(0, 0, drCvs.width, drCvs.height).data;
+  var hasPixels = false;
+  for (var i = 3; i < data.length; i += 4) { if (data[i] > 0) { hasPixels = true; break; } }
+  if (!hasPixels) return null;
+  return drCvs.toDataURL('image/png').split(',')[1];
+}
+
+// ── Path selection ─────────────────────────────────────────
+function veSelectPath(path) {
+  veCurrentPath = path;
+  document.querySelectorAll('.ve-path-btn').forEach(function(b) { b.classList.remove('selected'); });
+  document.getElementById('ve-btn-' + path).classList.add('selected');
+
+  // Screenshot section: visible for A and B, hidden for C
+  document.getElementById('ve-screenshot-section').style.display = (path === 'C') ? 'none' : 'block';
+
+  // Path forms: A and B are revealed only after screenshot upload; C is shown immediately
+  document.getElementById('ve-path-a-form').style.display = 'none';
+  document.getElementById('ve-path-b-form').style.display = 'none';
+
+  if (path === 'C') {
+    document.getElementById('ve-path-c-form').style.display = 'block';
+    veCLoadAssets();
+  } else {
+    document.getElementById('ve-path-c-form').style.display = 'none';
+    // If a screenshot was already uploaded (path switch), show path form immediately
+    if (veScreenshotB64) {
+      if (path === 'A') document.getElementById('ve-path-a-form').style.display = 'block';
+      if (path === 'B') document.getElementById('ve-path-b-form').style.display = 'block';
+    }
+  }
+}
+
+// ── PATH A — Apply layout ─────────────────────────────────
+function veApplyPathA() {
+  var btn    = document.getElementById('ve-a-apply-btn');
+  var status = document.getElementById('ve-a-status');
+  if (!veScreenshotB64) { status.textContent = 'Upload a screenshot first.'; return; }
+  btn.disabled    = true;
+  btn.textContent = 'Asking Claude...';
+  status.textContent = '';
+
+  // If user saved a drawing, send the composite (screenshot+drawing merged).
+  // Otherwise send the clean screenshot (text note only).
+  var screenshotToSend = veCompositeB64 || veScreenshotB64;
+  if (!veCompositeB64) {
+    var note = document.getElementById('ve-text-note').value.trim();
+    if (!note) {
+      btn.disabled = false; btn.textContent = 'Apply Layout Change to Level 1';
+      status.textContent = 'Add a drawing (click Save Drawing) or a text note before applying.';
+      return;
+    }
+  }
+
+  var payload = {
+    screenshot:            screenshotToSend,
+    annotations:           null,
+    nanobanana_reference:  null,
+    has_drawing:           !!veCompositeB64,   // true = composite has baked-in marks
+    text_note:             document.getElementById('ve-text-note').value.trim() || null,
+    level_index:           0
+  };
+
+  fetch('/api/visual/layout', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload)
+  })
+  .then(function(r) { return r.ok ? r.json() : r.json().then(function(e) { throw new Error(e.detail || 'Server error'); }); })
+  .then(function(data) {
+    // Apply to the first level card — fields use id pattern: {card.dataset.levelId}_fieldname
+    var levelCards = document.querySelectorAll('.level-card');
+    if (levelCards.length > 0) {
+      var card   = levelCards[0];
+      var cardId = card.dataset.levelId;
+      var layout = data.layout;
+      var fc  = document.getElementById(cardId + '_foundation_card');
+      var tab = document.getElementById(cardId + '_tableau');
+      var dp  = document.getElementById(cardId + '_draw_pile');
+      var cw  = document.getElementById(cardId + '_cell_width');
+      var ch  = document.getElementById(cardId + '_cell_height');
+      if (fc)  fc.value  = layout.foundation_card;
+      if (tab) tab.value = JSON.stringify(layout.tableau, null, 2);
+      if (dp)  dp.value  = (layout.draw_pile || []).join(', ');
+      if (cw)  cw.value  = layout.grid.cell_width;
+      if (ch)  ch.value  = layout.grid.cell_height;
+      var badge = card.querySelector('.tableau-badge');
+      if (badge) badge.textContent = (layout.tableau || []).length + ' cards';
+      veLog('Path A applied to level card "' + cardId + '": foundation=' + layout.foundation_card + ', ' + (layout.tableau||[]).length + ' tableau cards');
+    } else {
+      veLog('Warning: no level cards found in form — switch to Levels tab and add a level first');
+    }
+    veAddPendingChange('A', veScreenshotB64, veCompositeB64 || null, data.solve_sequence ? 'Solve: ' + data.solve_sequence.join(' → ') : 'Layout updated');
+    status.textContent = 'Layout applied to Level 1! Check the Levels tab.';
+
+    // Show Claude's reasoning
+    var resultBox = document.getElementById('ve-a-result');
+    var resultContent = document.getElementById('ve-a-result-content');
+    var layout = data.layout;
+    var html = '';
+    html += '<div style="margin-bottom:8px"><strong>Foundation:</strong> ' + layout.foundation_card + '</div>';
+    html += '<div style="margin-bottom:8px"><strong>Tableau:</strong> ' + layout.tableau.length + ' cards in ' +
+            (Math.max.apply(null, layout.tableau.map(function(c) { return c.col; })) + 1) + ' columns</div>';
+    if (layout.draw_pile && layout.draw_pile.length > 0) {
+      html += '<div style="margin-bottom:8px"><strong>Draw pile:</strong> ' + layout.draw_pile.length + ' cards</div>';
+    }
+    if (data.solve_sequence && data.solve_sequence.length > 0) {
+      html += '<div style="margin-bottom:8px"><strong>Solve sequence:</strong><br><code style="font-size:11px;color:#79c0ff">' +
+              data.solve_sequence.join(' → ') + '</code></div>';
+    }
+    html += '<div style="font-size:11px; color:var(--muted); margin-top:12px">This layout was generated and applied to Level 1. Click Generate Ad to preview.</div>';
+    resultContent.innerHTML = html;
+    resultBox.style.display = 'block';
+
+    setTimeout(function() { status.textContent = ''; }, 3000);
+  })
+  .catch(function(err) {
+    status.textContent = 'Error: ' + err.message;
+  })
+  .finally(function() {
+    btn.disabled    = false;
+    btn.textContent = 'Apply Layout Change to Level 1';
+  });
+}
+
+// ── PATH B — Prompt enhancement ───────────────────────────
+function veEnhancePrompt() {
+  if (!veScreenshotB64) { document.getElementById('ve-b-enhance-status').textContent = 'Upload a screenshot first.'; return; }
+  var rough = document.getElementById('ve-rough-prompt').value.trim();
+  if (!rough) { document.getElementById('ve-b-enhance-status').textContent = 'Write a description first.'; return; }
+
+  var btn    = document.getElementById('ve-enhance-btn');
+  var status = document.getElementById('ve-b-enhance-status');
+  btn.disabled    = true;
+  btn.textContent = 'Asking Claude...';
+  status.textContent = '';
+
+  fetch('/api/nanobanana/enhance-prompt', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ rough_prompt: rough, screenshot: veScreenshotB64 })
+  })
+  .then(function(r) { return r.ok ? r.json() : r.json().then(function(e) { throw new Error(e.detail || 'Server error'); }); })
+  .then(function(data) {
+    veShowSuggestions(data.suggestions);
+  })
+  .catch(function(err) {
+    status.textContent = 'Error: ' + err.message;
+  })
+  .finally(function() {
+    btn.disabled    = false;
+    btn.textContent = '✨ Suggest Better Prompts';
+  });
+}
+
+function veSkipEnhance() {
+  var rough = document.getElementById('ve-rough-prompt').value.trim();
+  if (!rough) { document.getElementById('ve-b-enhance-status').textContent = 'Write a description first.'; return; }
+  veChosenPrompt = rough;
+  veShowSuggestions([rough]);
+}
+
+function veShowSuggestions(suggestions) {
+  var list = document.getElementById('ve-suggestions-list');
+  list.innerHTML = '';
+  suggestions.forEach(function(s, i) {
+    var btn = document.createElement('button');
+    btn.className   = 've-suggestion';
+    btn.textContent = s;
+    btn.onclick     = function() {
+      veChosenPrompt = s;
+      document.querySelectorAll('.ve-suggestion').forEach(function(b) { b.classList.remove('selected'); });
+      btn.classList.add('selected');
+      document.getElementById('ve-gen-ref-btn').disabled = false;
+    };
+    list.appendChild(btn);
+  });
+  document.getElementById('ve-b-suggestions-step').style.display = 'block';
+  document.getElementById('ve-gen-ref-btn').disabled = true;
+}
+
+function veBackToPrompt() {
+  document.getElementById('ve-b-suggestions-step').style.display = 'none';
+  veChosenPrompt = null;
+}
+
+// ── PATH B — Generate reference ───────────────────────────
+function veGenerateReference() {
+  if (!veChosenPrompt) return;
+  var btn    = document.getElementById('ve-gen-ref-btn');
+  var status = document.getElementById('ve-b-gen-status');
+  btn.disabled    = true;
+  btn.textContent = 'Generating...';
+  status.textContent = 'Sending to Nanobanana (Google Gemini)...';
+
+  fetch('/api/nanobanana/generate', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ prompt: veChosenPrompt, reference_image: veScreenshotB64, num_variations: 2 })
+  })
+  .then(function(r) { return r.ok ? r.json() : r.json().then(function(e) { throw new Error(e.detail || 'Server error'); }); })
+  .then(function(data) {
+    status.textContent = '';
+    veShowVariations(data.images || []);
+  })
+  .catch(function(err) {
+    status.textContent = 'Error: ' + err.message;
+  })
+  .finally(function() {
+    btn.disabled    = false;
+    btn.textContent = 'Generate Reference Image';
+  });
+}
+
+function veRegenerateReference() {
+  veGenerateReference();
+}
+
+function veShowVariations(images) {
+  var list = document.getElementById('ve-variations-list');
+  list.innerHTML = '';
+  images.forEach(function(b64, i) {
+    var wrap = document.createElement('div');
+    wrap.className = 've-variation';
+    var img = document.createElement('img');
+    img.src = 'data:image/png;base64,' + b64;
+    wrap.appendChild(img);
+    wrap.onclick = function() {
+      document.querySelectorAll('.ve-variation').forEach(function(v) { v.classList.remove('selected'); });
+      wrap.classList.add('selected');
+      veChosenRefB64 = b64;
+      document.getElementById('ve-ref-confirm-btn').disabled = false;
+      // Load selected reference into canvas so user can annotate it
+      veLoadRefIntoCanvas(b64);
+    };
+    list.appendChild(wrap);
+  });
+  document.getElementById('ve-b-variations-step').style.display = 'block';
+  document.getElementById('ve-ref-confirm-btn').disabled = true;
+}
+
+function veConfirmReference() {
+  if (!veChosenRefB64) return;
+  document.getElementById('ve-b-assets-step').style.display = 'block';
+  document.getElementById('ve-b-asset-status').textContent = '';
+  veLoadAssetBrowser();
+}
+
+function veLoadAssetBrowser() {
+  var browser = document.getElementById('ve-asset-browser');
+  browser.innerHTML = '<span style="color:var(--muted);font-size:13px">Loading assets...</span>';
+  fetch('/api/assets/list')
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      browser.innerHTML = '';
+      (data.assets || []).forEach(function(asset) {
+        var card = document.createElement('div');
+        card.className = 've-asset-card selected'; // default all selected
+        card.dataset.assetName = asset.name;
+        card.onclick = function() { card.classList.toggle('selected'); };
+
+        var img = document.createElement('img');
+        if (asset.preview) {
+          img.src = 'data:image/png;base64,' + asset.preview;
+        } else {
+          img.src = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
+          img.style.background = '#333';
+        }
+
+        var nameEl = document.createElement('div');
+        nameEl.className = 've-ac-name';
+        nameEl.textContent = asset.name.replace('_', ' ');
+
+        var descEl = document.createElement('div');
+        descEl.className = 've-ac-desc';
+        descEl.textContent = asset.description;
+
+        card.appendChild(img);
+        card.appendChild(nameEl);
+        card.appendChild(descEl);
+        browser.appendChild(card);
+      });
+    })
+    .catch(function() {
+      browser.innerHTML = '<span style="color:#f97583">Could not load assets. Is the server running?</span>';
+    });
+}
+
+// ── PATH B — Apply assets ─────────────────────────────────
+function veApplyPathB() {
+  var btn    = document.getElementById('ve-b-apply-btn');
+  var status = document.getElementById('ve-b-asset-status');
+  if (!veChosenRefB64) { status.textContent = 'Select a reference image first.'; return; }
+
+  var assetNames = [];
+  document.querySelectorAll('.ve-asset-card.selected').forEach(function(card) {
+    if (card.dataset.assetName) assetNames.push(card.dataset.assetName);
+  });
+  if (assetNames.length === 0) { status.textContent = 'Select at least one asset (click to toggle).'; return; }
+
+  btn.disabled    = true;
+  btn.textContent = 'Generating assets...';
+  status.textContent = 'Sending to Nanobanana...';
+
+  fetch('/api/assets/replace', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ asset_names: assetNames, reference_image: veChosenRefB64, annotations: veGetAnnotations() })
+  })
+  .then(function(r) { return r.ok ? r.json() : r.json().then(function(e) { throw new Error(e.detail || 'Server error'); }); })
+  .then(function(data) {
+    // Assets saved to disk on server — clear in-memory overrides (build will read from files)
+    assetNames.forEach(function(n) { delete veImageAssets[n]; });
+    veUpdateAssetPreview();
+    veAddPendingChange('B', veChosenRefB64, null, 'Saved to disk: ' + assetNames.join(', '));
+    status.textContent = 'Assets saved to static/assets/project/. Next Build will include them.';
+    setTimeout(function() { veHideForm(); }, 3000);
+  })
+  .catch(function(err) {
+    status.textContent = 'Error: ' + err.message;
+  })
+  .finally(function() {
+    btn.disabled    = false;
+    btn.textContent = 'Generate & Apply Assets';
+  });
+}
+
+// ── PATH C — Direct Asset Edit ─────────────────────────────
+
+function veCLoadAssets() {
+  var picker = document.getElementById('ve-c-asset-picker');
+  picker.innerHTML = '<span style="color:var(--muted);font-size:13px">Loading assets...</span>';
+  fetch('/api/assets/list')
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      picker.innerHTML = '';
+      (data.assets || []).forEach(function(asset) {
+        var card = document.createElement('div');
+        card.className = 've-asset-card';
+        card.dataset.assetName = asset.name;
+        card.style.cursor = 'pointer';
+        card.onclick = function() { vePickEditAsset(asset.name, card); };
+
+        var img = document.createElement('img');
+        img.src = asset.preview ? 'data:image/png;base64,' + asset.preview
+                                : 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
+
+        var nameEl = document.createElement('div');
+        nameEl.className = 've-ac-name';
+        nameEl.textContent = asset.name.replace('_', ' ');
+
+        var descEl = document.createElement('div');
+        descEl.className = 've-ac-desc';
+        descEl.textContent = asset.description;
+
+        card.appendChild(img);
+        card.appendChild(nameEl);
+        card.appendChild(descEl);
+        picker.appendChild(card);
+      });
+    })
+    .catch(function() {
+      picker.innerHTML = '<span style="color:#f97583">Could not load assets.</span>';
+    });
+}
+
+function vePickEditAsset(name, cardEl) {
+  veEditAssetName = name;
+  // Visual selection — radio-like (only one at a time)
+  document.querySelectorAll('#ve-c-asset-picker .ve-asset-card').forEach(function(c) {
+    c.classList.remove('selected');
+  });
+  cardEl.classList.add('selected');
+  // Reveal prompt section
+  document.getElementById('ve-c-prompt-section').style.display = 'block';
+  document.getElementById('ve-c-preview-section').style.display = 'none';
+  document.getElementById('ve-c-gen-status').textContent = '';
+  document.getElementById('ve-c-approve-status').textContent = '';
+  document.getElementById('ve-c-prompt').focus();
+}
+
+function veEditAsset() {
+  var btn    = document.getElementById('ve-c-gen-btn');
+  var status = document.getElementById('ve-c-gen-status');
+  var prompt = document.getElementById('ve-c-prompt').value.trim();
+  if (!veEditAssetName) { status.textContent = 'Select an asset first.'; return; }
+  if (!prompt)          { status.textContent = 'Write a description of the change.'; return; }
+
+  btn.disabled    = true;
+  btn.textContent = 'Generating...';
+  status.textContent = 'Sending to Gemini...';
+  document.getElementById('ve-c-preview-section').style.display = 'none';
+
+  fetch('/api/assets/edit-preview', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ asset_name: veEditAssetName, prompt: prompt })
+  })
+  .then(function(r) { return r.ok ? r.json() : r.json().then(function(e) { throw new Error(e.detail || 'Server error'); }); })
+  .then(function(data) {
+    veEditResultB64 = data.result_b64;
+    status.textContent = '';
+
+    // Load the current asset as "before"
+    var beforeImg = document.getElementById('ve-c-before-img');
+    var afterImg  = document.getElementById('ve-c-after-img');
+    fetch('/api/assets/list')
+      .then(function(r) { return r.json(); })
+      .then(function(d) {
+        var slot = (d.assets || []).find(function(a) { return a.name === veEditAssetName; });
+        if (slot && slot.preview) {
+          beforeImg.src = 'data:image/png;base64,' + slot.preview;
+        }
+      });
+    afterImg.src = 'data:image/png;base64,' + veEditResultB64;
+
+    document.getElementById('ve-c-preview-section').style.display = 'block';
+    document.getElementById('ve-c-approve-status').textContent = '';
+    veRefreshLogs();
+  })
+  .catch(function(err) {
+    status.textContent = 'Error: ' + err.message;
+  })
+  .finally(function() {
+    btn.disabled    = false;
+    btn.textContent = 'Generate Preview';
+  });
+}
+
+function veApproveEditAsset() {
+  if (!veEditResultB64 || !veEditAssetName) return;
+  var btn    = document.getElementById('ve-c-approve-btn');
+  var status = document.getElementById('ve-c-approve-status');
+  btn.disabled    = true;
+  btn.textContent = 'Saving...';
+  status.textContent = '';
+
+  fetch('/api/assets/approve', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ asset_name: veEditAssetName, image_b64: veEditResultB64 })
+  })
+  .then(function(r) { return r.ok ? r.json() : r.json().then(function(e) { throw new Error(e.detail || 'Server error'); }); })
+  .then(function() {
+    delete veImageAssets[veEditAssetName];
+    veUpdateAssetPreview();
+    veAddPendingChange('C', null, null, 'Saved: ' + veEditAssetName.replace('_', ' '));
+    status.textContent = 'Saved to static/assets/project/. Next Build will include it.';
+    status.style.color = '#22c55e';
+    veRefreshLogs();
+    setTimeout(function() { veHideForm(); }, 2500);
+  })
+  .catch(function(err) {
+    status.textContent = 'Error: ' + err.message;
+    status.style.color = '';
+  })
+  .finally(function() {
+    btn.disabled    = false;
+    btn.textContent = 'Approve & Save';
+  });
+}
+
+function veRetryEditAsset() {
+  document.getElementById('ve-c-preview-section').style.display = 'none';
+  document.getElementById('ve-c-approve-status').textContent = '';
+  veEditResultB64 = null;
+  veEditAsset();
+}
+
+// ── Asset preview panel ────────────────────────────────────
+function veUpdateAssetPreview() {
+  var panel = document.getElementById('ve-asset-preview');
+  var items = document.getElementById('ve-asset-preview-items');
+  items.innerHTML = '';
+  var names = Object.keys(veImageAssets);
+  if (names.length === 0) { panel.style.display = 'none'; return; }
+  panel.style.display = 'block';
+  names.forEach(function(name) {
+    var wrap = document.createElement('div');
+    wrap.style.textAlign = 'center';
+    var img = document.createElement('img');
+    img.src = 'data:image/png;base64,' + veImageAssets[name];
+    img.style.cssText = 'width:60px;height:80px;object-fit:cover;border-radius:4px;border:1px solid var(--border);display:block';
+    var lbl = document.createElement('div');
+    lbl.textContent = name;
+    lbl.style.cssText = 'font-size:11px;color:var(--muted);margin-top:4px';
+    wrap.appendChild(img); wrap.appendChild(lbl);
+    items.appendChild(wrap);
+  });
+}
+
+// ── History log ────────────────────────────────────────────
+// ── Change queue management ───────────────────────────────
+
+function veAddPendingChange(type, thumbCleanB64, thumbMarkedB64, note) {
+  var change = {
+    id: Date.now() + '_' + Math.random().toString(36).substr(2, 9),
+    type: type,
+    clean: thumbCleanB64,
+    marked: thumbMarkedB64,
+    note: note,
+    timestamp: new Date().toLocaleString()
+  };
+  vePendingChanges.push(change);
+  veRenderPending();
+}
+
+function veDeletePendingChange(changeId) {
+  if (!confirm('Delete this pending change?')) return;
+  vePendingChanges = vePendingChanges.filter(function(c) { return c.id !== changeId; });
+  veRenderPending();
+}
+
+function veRenderPending() {
+  var list  = document.getElementById('ve-pending-list');
+  var empty = document.getElementById('ve-pending-empty');
+  list.innerHTML = '';
+  if (vePendingChanges.length === 0) {
+    empty.style.display = 'block';
+    return;
+  }
+  empty.style.display = 'none';
+
+  vePendingChanges.forEach(function(item) {
+    var li = document.createElement('li');
+    li.style.flexWrap = 'wrap';
+
+    // Thumbnails
+    if (item.clean || item.marked) {
+      var thumbRow = document.createElement('div');
+      thumbRow.style.cssText = 'display:flex;gap:6px;align-items:flex-end;margin-right:8px';
+
+      if (item.clean) {
+        var wrap1 = document.createElement('div');
+        wrap1.style.cssText = 'text-align:center';
+        var lbl1 = document.createElement('div');
+        lbl1.style.cssText = 'font-size:10px;color:var(--muted);margin-bottom:2px';
+        lbl1.textContent = 'Original';
+        var img1 = document.createElement('img');
+        img1.src = 'data:image/png;base64,' + item.clean;
+        img1.className = 've-thumb';
+        wrap1.appendChild(lbl1); wrap1.appendChild(img1);
+        thumbRow.appendChild(wrap1);
+      }
+
+      if (item.marked) {
+        var wrap2 = document.createElement('div');
+        wrap2.style.cssText = 'text-align:center';
+        var lbl2 = document.createElement('div');
+        lbl2.style.cssText = 'font-size:10px;color:#6366f1;font-weight:600;margin-bottom:2px';
+        lbl2.textContent = '✏ Analyzed';
+        var img2 = document.createElement('img');
+        img2.src = 'data:image/png;base64,' + item.marked;
+        img2.className = 've-thumb';
+        img2.style.border = '2px solid #6366f1';
+        wrap2.appendChild(lbl2); wrap2.appendChild(img2);
+        thumbRow.appendChild(wrap2);
+      }
+
+      li.appendChild(thumbRow);
+    }
+
+    var badge = document.createElement('span');
+    badge.className = 've-badge ' + item.type;
+    badge.textContent = 'Path ' + item.type;
+    var note = document.createElement('span');
+    note.className = 've-status';
+    note.textContent = item.note;
+    var spacer = document.createElement('span');
+    spacer.style.flex = '1';
+    var deleteBtn = document.createElement('button');
+    deleteBtn.className = 've-small-btn';
+    deleteBtn.textContent = '❌ Delete';
+    deleteBtn.style.cssText = 'font-size:11px;padding:4px 10px;background:#f9758340;border-color:#f97583;color:#f97583';
+    deleteBtn.onclick = function() { veDeletePendingChange(item.id); };
+
+    li.appendChild(badge); li.appendChild(note); li.appendChild(spacer); li.appendChild(deleteBtn);
+    list.appendChild(li);
+  });
+}
+
+function veRenderApplied() {
+  var container = document.getElementById('ve-applied-list');
+  var empty = document.getElementById('ve-applied-empty');
+  container.innerHTML = '';
+  if (veAppliedChanges.length === 0) {
+    empty.style.display = 'block';
+    return;
+  }
+  empty.style.display = 'none';
+
+  veAppliedChanges.forEach(function(build) {
+    // Build header
+    var buildHeader = document.createElement('div');
+    buildHeader.style.cssText = 'font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;padding:8px 10px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);display:flex;align-items:center;gap:8px';
+    buildHeader.innerHTML = '<span>📦 ' + build.run_name + '</span><span style="font-size:10px;color:var(--muted);font-weight:400;margin-left:auto">' + build.changes.length + ' change(s)</span>';
+    container.appendChild(buildHeader);
+
+    // Changes in this build
+    var list = document.createElement('ul');
+    list.className = 've-history';
+    list.style.marginBottom = '16px';
+    build.changes.forEach(function(item) {
+      var li = document.createElement('li');
+      li.style.flexWrap = 'wrap';
+
+      // Thumbnails
+      if (item.clean || item.marked) {
+        var thumbRow = document.createElement('div');
+        thumbRow.style.cssText = 'display:flex;gap:6px;align-items:flex-end;margin-right:8px';
+
+        if (item.clean) {
+          var wrap1 = document.createElement('div');
+          wrap1.style.cssText = 'text-align:center';
+          var lbl1 = document.createElement('div');
+          lbl1.style.cssText = 'font-size:10px;color:var(--muted);margin-bottom:2px';
+          lbl1.textContent = 'Original';
+          var img1 = document.createElement('img');
+          img1.src = 'data:image/png;base64,' + item.clean;
+          img1.className = 've-thumb';
+          wrap1.appendChild(lbl1); wrap1.appendChild(img1);
+          thumbRow.appendChild(wrap1);
+        }
+
+        if (item.marked) {
+          var wrap2 = document.createElement('div');
+          wrap2.style.cssText = 'text-align:center';
+          var lbl2 = document.createElement('div');
+          lbl2.style.cssText = 'font-size:10px;color:#6366f1;font-weight:600;margin-bottom:2px';
+          lbl2.textContent = '✏ Analyzed';
+          var img2 = document.createElement('img');
+          img2.src = 'data:image/png;base64,' + item.marked;
+          img2.className = 've-thumb';
+          img2.style.border = '2px solid #6366f1';
+          wrap2.appendChild(lbl2); wrap2.appendChild(img2);
+          thumbRow.appendChild(wrap2);
+        }
+
+        li.appendChild(thumbRow);
+      }
+
+      var badge = document.createElement('span');
+      badge.className = 've-badge ' + item.type;
+      badge.textContent = 'Path ' + item.type;
+      var note = document.createElement('span');
+      note.className = 've-status';
+      note.textContent = item.note;
+      li.appendChild(badge); li.appendChild(note);
+      list.appendChild(li);
+    });
+    container.appendChild(list);
+  });
+}
+
+function veMovePendingToApplied(run_id, run_name) {
+  if (vePendingChanges.length === 0) return;
+  veAppliedChanges.unshift({
+    run_id: run_id,
+    run_name: run_name,
+    changes: vePendingChanges.slice() // copy array
+  });
+  vePendingChanges = [];
+  veRenderPending();
+  veRenderApplied();
+}
+
+// ── Log viewer ────────────────────────────────────────────
+function veRefreshAssetLibrary() {
+  var grid = document.getElementById('ve-library-grid');
+  if (!grid) return;
+  grid.innerHTML = '<span style="color:var(--muted);font-size:13px">Loading...</span>';
+  fetch('/api/assets/list')
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      grid.innerHTML = '';
+      (data.assets || []).forEach(function(asset) {
+        var card = document.createElement('div');
+        card.style.cssText = 'border:1px solid var(--border);border-radius:var(--radius);padding:8px;text-align:center;width:110px;background:var(--bg)';
+
+        var img = document.createElement('img');
+        img.style.cssText = 'width:90px;height:120px;object-fit:cover;border-radius:3px;display:block;margin:0 auto 6px';
+        img.src = asset.preview ? 'data:image/png;base64,' + asset.preview
+                                : 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAAC0lEQVQI12NgAAIABQAABjE+ibYAAAAASUVORK5CYII=';
+
+        var nameEl = document.createElement('div');
+        nameEl.style.cssText = 'font-size:12px;font-weight:600;color:var(--text)';
+        nameEl.textContent = asset.name.replace('_', ' ');
+
+        var stateEl = document.createElement('div');
+        stateEl.style.cssText = 'font-size:11px;color:var(--muted);margin-top:2px';
+        stateEl.textContent = asset.has_file ? 'custom' : 'placeholder';
+
+        card.appendChild(img); card.appendChild(nameEl); card.appendChild(stateEl);
+        grid.appendChild(card);
+      });
+    })
+    .catch(function() {
+      grid.innerHTML = '<span style="color:#f97583;font-size:13px">Could not load. Is the server running?</span>';
+    });
+}
+
+function veRefreshLogs() {
+  fetch('/api/logs?n=60')
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      var box = document.getElementById('ve-log-box');
+      if (!box) return;
+      if (!data.lines || data.lines.length === 0) {
+        box.textContent = '(no log entries yet)';
+        return;
+      }
+      // Color-code by level
+      box.innerHTML = data.lines.map(function(line) {
+        var color = '#e6edf3';
+        if (line.includes('ERROR'))   color = '#f97583';
+        if (line.includes('WARNING')) color = '#e3b341';
+        if (line.includes('INFO'))    color = '#79c0ff';
+        return '<span style="color:' + color + '">' + line.replace(/</g, '&lt;') + '</span>';
+      }).join('\n');
+      box.scrollTop = box.scrollHeight;
+    })
+    .catch(function() { /* server may not be running yet */ });
+}
+
+function veClearLogView() {
+  var box = document.getElementById('ve-log-box');
+  if (box) box.innerHTML = '<span style="color:#6e7681">View cleared. Click Refresh to reload.</span>';
+}
+
+function veLog(msg) {
+  // Append to log box immediately (client-side echo), then refresh from server
+  var box = document.getElementById('ve-log-box');
+  if (box) {
+    var now = new Date().toLocaleTimeString();
+    box.innerHTML += '\n<span style="color:#3fb950">[client ' + now + '] ' + msg.replace(/</g, '&lt;') + '</span>';
+    box.scrollTop = box.scrollHeight;
+  }
+  setTimeout(veRefreshLogs, 800); // pull server log shortly after
+}
+
+// ── Patch buildConfig to include veImageAssets ────────────
+var _origBuildConfig = buildConfig;
+buildConfig = function() {
+  var cfg = _origBuildConfig();
+  if (veImageAssets.background) cfg.visual.background_image = veImageAssets.background;
+  if (veImageAssets.card_back)  cfg.visual.card_back_image  = veImageAssets.card_back;
+  if (veImageAssets.felt)       cfg.visual.felt_image       = veImageAssets.felt;
+  return cfg;
+};
 </script>
 
 </body>

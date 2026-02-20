@@ -11,5 +11,8 @@
   "button_text_color": "#ffffff",
   "primary_text_color": "#ffffff",
   "font_family": "Arial, sans-serif",
-  "ui_theme": "classic"
+  "ui_theme": "classic",
+  "background_image": null,
+  "card_back_image": null,
+  "felt_image": null
 }
