@@ -1356,11 +1356,6 @@ function veCapturePreview() {
         veCompositeB64 = null; // Clear previous drawing
         setTimeout(function() {
           veSetupPathACanvases(dataUrl);
-          // Success feedback after canvas is set up
-          setTimeout(function() {
-            var note = 'Screenshot captured! You can now add text, draw annotations, or submit as-is.';
-            alert(note);
-          }, 200);
         }, 100);
       } catch (innerErr) {
         alert('Capture failed: ' + innerErr.message + '\n\nUse drag & drop instead: take a screenshot and drag it into the upload area.');
