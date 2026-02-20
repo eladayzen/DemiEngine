@@ -641,7 +641,7 @@
             <div class="ve-label">Claude's suggestion:</div>
             <div id="ve-a-improved-prompt" style="padding:12px; background:var(--bg); border:2px solid #22c55e; border-radius:var(--radius); font-size:14px; line-height:1.6; font-weight:500; margin-top:6px"></div>
           </div>
-          <button class="ve-apply-btn" id="ve-a-apply-btn" onclick="veApplyPathA()">✓ Apply This Layout Change</button>
+          <button class="ve-apply-btn" id="ve-a-apply-btn" onclick="veApplyPathA()">✨ Groom it!</button>
         </div>
 
         <!-- Reasoning from Claude (shown after clicking Apply) -->
@@ -1351,16 +1351,17 @@ function veCapturePreview() {
         veShowForm();
         veSelectPath('A');
 
-        // Auto-load the screenshot into Path A
+        // Auto-load the screenshot into Path A (small delay to ensure DOM is ready)
         veScreenshotB64 = screenshotB64;
         veCompositeB64 = null; // Clear previous drawing
-        veSetupPathACanvases(dataUrl);
-
-        // Success feedback
         setTimeout(function() {
-          var note = 'Screenshot captured! You can now:\n- Generate a reference image\n- Draw annotations\n- Or just use as-is';
-          alert(note);
-        }, 300);
+          veSetupPathACanvases(dataUrl);
+          // Success feedback after canvas is set up
+          setTimeout(function() {
+            var note = 'Screenshot captured! You can now add text, draw annotations, or submit as-is.';
+            alert(note);
+          }, 200);
+        }, 100);
       } catch (innerErr) {
         alert('Capture failed: ' + innerErr.message + '\n\nUse drag & drop instead: take a screenshot and drag it into the upload area.');
       }
@@ -1840,9 +1841,10 @@ function veClearDrawing() {
 
 function veBindDrawEvents(cvs) {
   // Remove old listeners by cloning
+  var originalId = cvs.id;
   var newCvs = cvs.cloneNode(false);
   cvs.parentNode.replaceChild(newCvs, cvs);
-  newCvs.id = 've-draw-canvas';
+  newCvs.id = originalId; // Preserve original ID (ve-a-draw-canvas or ve-draw-canvas)
   newCvs.className = cvs.className;
 
   function pos(e) {
@@ -1865,8 +1867,11 @@ function veBindDrawEvents(cvs) {
     e.preventDefault();
     var p   = pos(e);
     var ctx = newCvs.getContext('2d');
-    var col = document.getElementById('ve-draw-color').value;
-    var sz  = parseInt(document.getElementById('ve-draw-size').value) || 4;
+    // Determine which color/size inputs to use based on canvas ID
+    var colorId = originalId === 've-a-draw-canvas' ? 've-a-draw-color' : 've-draw-color';
+    var sizeId = originalId === 've-a-draw-canvas' ? 've-a-draw-size' : 've-draw-size';
+    var col = document.getElementById(colorId).value;
+    var sz  = parseInt(document.getElementById(sizeId).value) || 4;
     if (veDrawTool === 'erase') {
       ctx.globalCompositeOperation = 'destination-out';
       ctx.lineWidth = sz * 4;
@@ -2234,7 +2239,7 @@ function veApplyPathA() {
   })
   .finally(function() {
     btn.disabled = false;
-    btn.textContent = '✓ Apply This Layout Change';
+    btn.textContent = '✨ Groom it!';
   });
 }
 
