@@ -638,3 +638,10 @@
 2026-02-20 14:07:58  INFO     POST /api/visual/layout — level=0, has_drawing=False, annotations=False, nanobanana_ref=False, note='Based on the screenshot: adjust card positions to improve pl'
 2026-02-20 14:08:06  INFO     HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
 2026-02-20 14:08:06  INFO     visual/layout OK — foundation=2H, 4 tableau cards
+2026-02-20 15:25:02  INFO     POST /api/generate — validating configs
+2026-02-20 15:25:02  INFO     Embedded project assets into build: {'background': 'background.png', 'card_back': 'card_back.png', 'felt': 'felt.png'}
+2026-02-20 15:25:02  INFO     Build complete → build_20260220_152502  (bg_image=False, card_back_image=False, felt_image=False)
+2026-02-20 15:25:05  INFO     assets/list — returning 3 slots
+2026-02-20 15:26:52  INFO     POST /api/visual/layout — level=0, has_drawing=False, annotations=False, nanobanana_ref=False, note='change this level to be in the layout like the picture — opt'
+2026-02-20 15:27:02  INFO     HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2026-02-20 15:27:02  INFO     visual/layout OK — foundation=7H, 8 tableau cards

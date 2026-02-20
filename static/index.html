@@ -586,40 +586,26 @@
             <p class="ve-note" style="margin-top:6px">You can submit text-only, or add a screenshot/drawing for more context.</p>
           </div>
 
-          <!-- RIGHT: Screenshot upload + canvas (optional) -->
+          <!-- RIGHT: Image Gallery (Horizontal) -->
           <div style="flex:1; min-width:300px">
-            <div class="ve-label">Optional: Add a screenshot</div>
+            <div class="ve-label">Reference Images (Optional)</div>
 
-            <!-- Upload area (shown when no screenshot) -->
-            <div id="ve-a-drop-zone" class="ve-drop-zone" onclick="document.getElementById('ve-a-file-input').click()" style="margin-bottom:8px">
-              <p style="font-size:12px">Click or drag screenshot<br>(or use Capture button)</p>
-              <input type="file" id="ve-a-file-input" accept="image/*" style="display:none">
+            <!-- Image Gallery - horizontal scroll with drag & drop -->
+            <div id="ve-a-gallery"
+                 style="display:flex; gap:12px; overflow-x:auto; padding:10px 0; min-height:180px; align-items:flex-start; border:2px dashed var(--border); border-radius:var(--radius); transition:all 0.2s"
+                 ondragover="veGalleryDragOver(event)"
+                 ondragleave="veGalleryDragLeave(event)"
+                 ondrop="veGalleryDrop(event)">
+              <!-- Image cards will be inserted here dynamically -->
             </div>
 
-            <!-- Canvas area (shown after upload) -->
-            <div id="ve-a-canvas-area" style="display:none">
-              <div class="ve-tools" style="margin-bottom:8px; font-size:11px">
-                <button class="ve-tool-btn active" id="ve-a-tool-pen" onclick="veSetTool('pen')">✏ Pen</button>
-                <button class="ve-tool-btn" id="ve-a-tool-arrow" onclick="veSetTool('arrow')">→ Arrow</button>
-                <button class="ve-tool-btn" id="ve-a-tool-rect" onclick="veSetTool('rect')">▭ Box</button>
-                <button class="ve-tool-btn" id="ve-a-tool-erase" onclick="veSetTool('erase')">⌫ Erase</button>
-                <button class="ve-tool-btn" onclick="veClearDrawing()">Clear</button>
-                <input type="color" id="ve-a-draw-color" value="#ff0000" style="width:24px;height:24px;border:none;padding:0;cursor:pointer;border-radius:3px">
-                <button class="ve-tool-btn primary" id="ve-a-save-drawing-btn" onclick="veSaveDrawing()" style="margin-left:auto; font-size:11px">💾 Save</button>
-              </div>
-              <div style="display:flex; gap:8px">
-                <div>
-                  <div class="ve-note" style="font-size:10px; margin-bottom:2px">Original</div>
-                  <div class="ve-canvas-wrap">
-                    <canvas id="ve-a-bg-canvas"></canvas>
-                    <canvas id="ve-a-draw-canvas" class="ve-draw-canvas"></canvas>
-                  </div>
-                </div>
-                <div id="ve-a-composite-wrap" style="display:none">
-                  <div class="ve-note" style="font-size:10px; margin-bottom:2px; color:#22c55e">✓ With marks</div>
-                  <img id="ve-a-composite-img" style="display:block; border-radius:4px; border:2px solid #22c55e; max-width:150px" />
-                </div>
-              </div>
+            <!-- Upload button -->
+            <div style="margin-top:10px">
+              <button class="ve-small-btn primary" onclick="veShowImageUpload()">+ Upload Image</button>
+              <input type="file" id="ve-a-file-input" accept="image/*" style="display:none" onchange="veHandleImageUpload(this)">
+              <p class="ve-note" style="margin-top:6px; font-size:11px">
+                Upload or drag & drop screenshots/reference images. The newest (rightmost) image is always included when you submit.
+              </p>
             </div>
           </div>
         </div>
@@ -1351,11 +1337,9 @@ function veCapturePreview() {
         veShowForm();
         veSelectPath('A');
 
-        // Auto-load the screenshot into Path A (small delay to ensure DOM is ready)
-        veScreenshotB64 = screenshotB64;
-        veCompositeB64 = null; // Clear previous drawing
+        // Add captured screenshot to gallery
         setTimeout(function() {
-          veSetupPathACanvases(dataUrl);
+          veAddImageToGallery(dataUrl);
         }, 100);
       } catch (innerErr) {
         alert('Capture failed: ' + innerErr.message + '\n\nUse drag & drop instead: take a screenshot and drag it into the upload area.');
@@ -1531,10 +1515,12 @@ veRenderApplied();
 // ============================================================
 // VISUAL EDITOR - Remaining State
 // ============================================================
-var veCurrentPath     = null;
-var veScreenshotB64  = null;
-var veCompositeB64   = null;  // screenshot + drawing merged — sent to Claude
+var veCurrentPath      = null;
+var veScreenshotB64    = null;
+var veCompositeB64     = null;  // screenshot + drawing merged — sent to Claude
 var veCapturedMetadata = null;  // game state metadata from Capture button
+var vePathAImages      = [];    // Array of {id, dataUrl, name} for image gallery
+var veImageCounter     = 0;     // Global counter for image numbering
 var veChosenPrompt   = null;
 var veChosenRefB64   = null;
 var veEditAssetName  = null;  // Path C: which asset is being edited
@@ -1617,6 +1603,10 @@ function veResetForm() {
   }
   veImprovedPromptA = null;
   window.vePathAApprovalData = null;
+
+  // Reset Path A image gallery
+  vePathAImages = [];
+  veRenderImageGallery();
 
   // Reset Path B sections (with safety checks)
   var bSuggestionsStep = document.getElementById('ve-b-suggestions-step');
@@ -2266,6 +2256,148 @@ function veApprovePathA() {
   setTimeout(function() {
     veHideForm();
   }, 1500);
+}
+
+// ── PATH A — Image Gallery ────────────────────────────────
+function veShowImageUpload() {
+  document.getElementById('ve-a-file-input').click();
+}
+
+function veHandleImageUpload(input) {
+  var file = input.files && input.files[0];
+  if (file && file.type.startsWith('image/')) {
+    var reader = new FileReader();
+    reader.onload = function(e) {
+      veAddImageToGallery(e.target.result);
+    };
+    reader.readAsDataURL(file);
+  }
+  // Reset input so same file can be uploaded again
+  input.value = '';
+}
+
+function veAddImageToGallery(dataUrl) {
+  veImageCounter++;
+  var imageNum = String(veImageCounter).padStart(2, '0');
+  var imageName = 'Image ' + imageNum;
+
+  vePathAImages.push({
+    id: veImageCounter,
+    dataUrl: dataUrl,
+    name: imageName
+  });
+
+  veRenderImageGallery();
+}
+
+function veRemoveImage(imageId) {
+  vePathAImages = vePathAImages.filter(function(img) { return img.id !== imageId; });
+  veRenderImageGallery();
+}
+
+function veRenderImageGallery() {
+  var gallery = document.getElementById('ve-a-gallery');
+  if (!gallery) return;
+
+  gallery.innerHTML = '';
+
+  if (vePathAImages.length === 0) {
+    gallery.innerHTML = '<div style="color:var(--muted);font-size:13px;padding:20px">No images yet. Click "Upload Image" or use the Capture button.</div>';
+    return;
+  }
+
+  vePathAImages.forEach(function(img, index) {
+    var isNewest = (index === vePathAImages.length - 1);
+
+    var card = document.createElement('div');
+    card.style.cssText = 'position:relative; flex-shrink:0; width:120px; padding:8px; border:2px solid ' +
+      (isNewest ? '#6366f1' : 'var(--border)') +
+      '; border-radius:var(--radius); background:var(--surface)' +
+      (isNewest ? '; box-shadow:0 0 12px rgba(99,102,241,0.5)' : '');
+
+    // Image number
+    var numLabel = document.createElement('div');
+    numLabel.textContent = img.name;
+    numLabel.style.cssText = 'font-size:11px; font-weight:600; margin-bottom:6px; color:' + (isNewest ? '#6366f1' : 'var(--text)');
+    card.appendChild(numLabel);
+
+    // Image thumbnail
+    var imgEl = document.createElement('img');
+    imgEl.src = img.dataUrl;
+    imgEl.style.cssText = 'width:100%; height:120px; object-fit:cover; border-radius:4px; display:block';
+    card.appendChild(imgEl);
+
+    // Remove button
+    var removeBtn = document.createElement('button');
+    removeBtn.textContent = '✕';
+    removeBtn.className = 've-tool-btn';
+    removeBtn.style.cssText = 'position:absolute; top:4px; right:4px; width:24px; height:24px; padding:0; font-size:14px; background:var(--bg); opacity:0.8';
+    removeBtn.onclick = function() {
+      if (confirm('Remove ' + img.name + '?')) {
+        veRemoveImage(img.id);
+      }
+    };
+    card.appendChild(removeBtn);
+
+    // Newest indicator
+    if (isNewest) {
+      var badge = document.createElement('div');
+      badge.textContent = 'ACTIVE';
+      badge.style.cssText = 'position:absolute; bottom:8px; left:8px; right:8px; background:#6366f1; color:#fff; font-size:9px; font-weight:700; text-align:center; padding:3px; border-radius:3px';
+      card.appendChild(badge);
+    }
+
+    gallery.appendChild(card);
+  });
+}
+
+// Drag & Drop handlers for image gallery
+function veGalleryDragOver(event) {
+  event.preventDefault();
+  event.stopPropagation();
+  var gallery = document.getElementById('ve-a-gallery');
+  if (gallery) {
+    gallery.style.borderColor = '#6366f1';
+    gallery.style.backgroundColor = 'rgba(99, 102, 241, 0.05)';
+  }
+}
+
+function veGalleryDragLeave(event) {
+  event.preventDefault();
+  event.stopPropagation();
+  var gallery = document.getElementById('ve-a-gallery');
+  if (gallery) {
+    gallery.style.borderColor = 'var(--border)';
+    gallery.style.backgroundColor = 'transparent';
+  }
+}
+
+function veGalleryDrop(event) {
+  event.preventDefault();
+  event.stopPropagation();
+
+  var gallery = document.getElementById('ve-a-gallery');
+  if (gallery) {
+    gallery.style.borderColor = 'var(--border)';
+    gallery.style.backgroundColor = 'transparent';
+  }
+
+  var files = event.dataTransfer && event.dataTransfer.files;
+  if (!files || files.length === 0) return;
+
+  // Process all dropped image files
+  for (var i = 0; i < files.length; i++) {
+    var file = files[i];
+    if (file.type.startsWith('image/')) {
+      (function(f) {
+        var reader = new FileReader();
+        reader.onload = function(e) {
+          veAddImageToGallery(e.target.result);
+        };
+        reader.readAsDataURL(f);
+      })(file);
+    }
+  }
 }
 
 // ── PATH B — Prompt enhancement ───────────────────────────
