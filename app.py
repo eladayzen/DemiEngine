@@ -503,6 +503,7 @@ class VisualLayoutRequest(BaseModel):
     text_note: Optional[str] = None
     has_drawing: bool = False              # True when screenshot contains user-drawn marks baked in
     level_index: int = 0
+    game_metadata: Optional[dict] = None   # game state metadata (level number, foundation, etc.)
 
 
 class ReplaceAssetsRequest(BaseModel):
@@ -649,7 +650,24 @@ async def visual_layout(req: VisualLayoutRequest):  # noqa: F811
     else:
         instruction = req.text_note or "Update the layout to match the reference/annotations."
 
-    content.append({"type": "text", "text": f"Operator instruction: {instruction}\nUse the generate_level_layout tool to return the updated layout."})
+    # Add game state context if available
+    context_text = f"Operator instruction: {instruction}"
+    if req.game_metadata:
+        meta = req.game_metadata
+        context_parts = []
+        if meta.get("level_number") is not None:
+            context_parts.append(f"Level: {meta['level_number']}")
+        if meta.get("foundation_card"):
+            context_parts.append(f"Foundation: {meta['foundation_card']}")
+        if meta.get("tableau_count"):
+            context_parts.append(f"Tableau cards: {meta['tableau_count']}")
+        if meta.get("draw_pile_count"):
+            context_parts.append(f"Draw pile: {meta['draw_pile_count']}")
+
+        if context_parts:
+            context_text = f"Game state context: {', '.join(context_parts)}\n\n" + context_text
+
+    content.append({"type": "text", "text": f"{context_text}\nUse the generate_level_layout tool to return the updated layout."})
 
     try:
         response = client.messages.create(

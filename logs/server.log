@@ -456,3 +456,13 @@
 2026-02-20 12:17:02  INFO     POST /api/generate — validating configs
 2026-02-20 12:17:02  INFO     Embedded project assets into build: {'background': 'background.png', 'card_back': 'card_back.png', 'felt': 'felt.png'}
 2026-02-20 12:17:02  INFO     Build complete → build_20260220_121702  (bg_image=False, card_back_image=False, felt_image=False)
+2026-02-20 12:28:11  INFO     assets/list — returning 3 slots
+2026-02-20 12:28:12  INFO     POST /api/generate — validating configs
+2026-02-20 12:28:12  INFO     Embedded project assets into build: {'background': 'background.png', 'card_back': 'card_back.png', 'felt': 'felt.png'}
+2026-02-20 12:28:12  INFO     Build complete → build_20260220_122812  (bg_image=False, card_back_image=False, felt_image=False)
+2026-02-20 12:28:54  INFO     POST /api/visual/layout — level=0, has_drawing=True, annotations=False, nanobanana_ref=False, note='This card should be black clubs'
+2026-02-20 12:28:59  INFO     HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2026-02-20 12:28:59  INFO     visual/layout OK — foundation=3S, 3 tableau cards
+2026-02-20 12:29:19  INFO     POST /api/generate — validating configs
+2026-02-20 12:29:19  INFO     Embedded project assets into build: {'background': 'background.png', 'card_back': 'card_back.png', 'felt': 'felt.png'}
+2026-02-20 12:29:19  INFO     Build complete → build_20260220_122919  (bg_image=False, card_back_image=False, felt_image=False)

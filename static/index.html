@@ -1241,6 +1241,22 @@ function veCapturePreview() {
 
         var screenshotB64 = dataUrl.split(',')[1];
 
+        // Capture game state metadata from iframe
+        try {
+          var iframeWin = iframe.contentWindow;
+          veCapturedMetadata = {
+            level_number: iframeWin.currentLevel || 0,
+            foundation_card: iframeWin.foundation || 'unknown',
+            tableau_count: (iframeWin.tableau && iframeWin.tableau.length) || 0,
+            draw_pile_count: (iframeWin.drawPile && iframeWin.drawPile.length) || 0,
+            game_state: 'captured' // Could be enhanced with more state detection
+          };
+          console.log('Captured metadata:', veCapturedMetadata);
+        } catch (metaErr) {
+          console.warn('Could not capture game metadata:', metaErr);
+          veCapturedMetadata = null;
+        }
+
         // Switch to Visual Editor tab
         document.querySelectorAll('.tab-btn').forEach(function(b) { b.classList.remove('active'); });
         document.querySelectorAll('.tab-content').forEach(function(c) { c.classList.remove('active'); });
@@ -1437,6 +1453,7 @@ veRenderApplied();
 var veCurrentPath     = null;
 var veScreenshotB64  = null;
 var veCompositeB64   = null;  // screenshot + drawing merged — sent to Claude
+var veCapturedMetadata = null;  // game state metadata from Capture button
 var veChosenPrompt   = null;
 var veChosenRefB64   = null;
 var veEditAssetName  = null;  // Path C: which asset is being edited
@@ -1465,13 +1482,14 @@ function veHideForm() {
   veResetForm();
 }
 function veResetForm() {
-  veCurrentPath    = null;
-  veScreenshotB64  = null;
-  veCompositeB64   = null;
-  veChosenPrompt   = null;
-  veChosenRefB64   = null;
-  veEditAssetName  = null;
-  veEditResultB64  = null;
+  veCurrentPath      = null;
+  veScreenshotB64    = null;
+  veCompositeB64     = null;
+  veCapturedMetadata = null;
+  veChosenPrompt     = null;
+  veChosenRefB64     = null;
+  veEditAssetName    = null;
+  veEditResultB64    = null;
   document.getElementById('ve-drop-zone').innerHTML =
     '<p>Click to upload or drag &amp; drop a screenshot (PNG / JPG)</p>' +
     '<input type="file" id="ve-file-input" accept="image/*" style="display:none">';
@@ -1793,7 +1811,8 @@ function veApplyPathA() {
     nanobanana_reference:  null,
     has_drawing:           !!veCompositeB64,   // true = composite has baked-in marks
     text_note:             document.getElementById('ve-text-note').value.trim() || null,
-    level_index:           0
+    level_index:           0,
+    game_metadata:         veCapturedMetadata  // game state from Capture button
   };
 
   fetch('/api/visual/layout', {
