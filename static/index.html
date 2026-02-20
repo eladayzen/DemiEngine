@@ -593,9 +593,23 @@
           <div style="flex:1; min-width:300px">
             <div class="ve-label">Reference Images (Optional)</div>
 
-            <!-- Image Gallery - horizontal scroll with drag & drop -->
+            <!-- Empty state - shown when no images -->
+            <div id="ve-a-gallery-empty"
+                 style="display:flex; align-items:center; justify-content:center; min-height:180px; border:2px dashed var(--border); border-radius:var(--radius); background:var(--surface); cursor:pointer; transition:all 0.2s"
+                 onclick="veShowImageUpload()"
+                 ondragover="veGalleryDragOver(event)"
+                 ondragleave="veGalleryDragLeave(event)"
+                 ondrop="veGalleryDrop(event)">
+              <div style="text-align:center; color:var(--muted); padding:20px">
+                <div style="font-size:40px; margin-bottom:10px">📁</div>
+                <div style="font-size:14px; font-weight:600; margin-bottom:6px">No reference images yet</div>
+                <div style="font-size:12px">Click to upload, drag & drop, or use the Capture button</div>
+              </div>
+            </div>
+
+            <!-- Image Gallery - horizontal scroll with drag & drop (shown when images exist) -->
             <div id="ve-a-gallery"
-                 style="display:flex; gap:12px; overflow-x:auto; padding:10px 0; min-height:180px; align-items:flex-start; border:2px dashed var(--border); border-radius:var(--radius); transition:all 0.2s"
+                 style="display:none; gap:12px; overflow-x:auto; padding:10px 0; min-height:180px; align-items:flex-start; border:2px dashed var(--border); border-radius:var(--radius); transition:all 0.2s"
                  ondragover="veGalleryDragOver(event)"
                  ondragleave="veGalleryDragLeave(event)"
                  ondrop="veGalleryDrop(event)">
@@ -609,8 +623,7 @@
               <input type="file" id="ve-a-file-input" accept="image/*" style="display:none" onchange="veHandleImageUpload(this)">
             </div>
             <p class="ve-note" style="margin-top:6px; font-size:11px">
-              Upload or drag & drop screenshots/reference images. Click any image to make it ACTIVE (always sent to Claude).<br>
-              Reference other images in your text with @Image01, @Image02, etc. — only ACTIVE + @referenced images are sent.
+              Click any image to make it ACTIVE (always sent to Claude). Reference other images with @Image01, @Image02, etc. — only ACTIVE + @referenced images are sent.
             </p>
           </div>
         </div>
@@ -1594,6 +1607,7 @@ var veCapturedMetadata = null;  // game state metadata from Capture button
 var vePathAImages      = [];    // Array of {id, dataUrl, name} for image gallery
 var veImageCounter     = 0;     // Global counter for image numbering
 var veActiveImageId    = null;  // ID of the currently active image in gallery
+var vePathAGalleryVisible = false; // Whether to show gallery for current request (reset each time)
 var veChosenPrompt   = null;
 var veChosenRefB64   = null;
 var veEditAssetName  = null;  // Path C: which asset is being edited
@@ -1630,6 +1644,8 @@ function veResetForm() {
   veChosenRefB64     = null;
   veEditAssetName    = null;
   veEditResultB64    = null;
+  vePathAGalleryVisible = false; // Hide gallery for new request
+  veRenderImageGallery(); // Re-render to show empty state
   document.getElementById('ve-drop-zone').innerHTML =
     '<p>Click to upload or drag &amp; drop a screenshot (PNG / JPG)</p>' +
     '<input type="file" id="ve-file-input" accept="image/*" style="display:none">';
@@ -2407,6 +2423,9 @@ function veAddImageToGallery(dataUrl, skipSave) {
   // Newly added image becomes active
   veActiveImageId = veImageCounter;
 
+  // Show the gallery (user has chosen to use images for this request)
+  vePathAGalleryVisible = true;
+
   // Save to disk (unless we're loading from disk)
   if (!skipSave) {
     veSaveImageToDisk(dataUrl, veImageCounter);
@@ -2803,13 +2822,20 @@ function veSubmitNanoBananaEdit() {
 
 function veRenderImageGallery() {
   var gallery = document.getElementById('ve-a-gallery');
-  if (!gallery) return;
+  var emptyState = document.getElementById('ve-a-gallery-empty');
+  if (!gallery || !emptyState) return;
 
   gallery.innerHTML = '';
 
-  if (vePathAImages.length === 0) {
-    gallery.innerHTML = '<div style="color:var(--muted);font-size:13px;padding:20px">No images yet. Click "Upload Image" or use the Capture button.</div>';
+  // Toggle between empty state and gallery based on visibility flag
+  // (gallery is hidden until user explicitly uploads/captures/drags an image)
+  if (!vePathAGalleryVisible || vePathAImages.length === 0) {
+    emptyState.style.display = 'flex';
+    gallery.style.display = 'none';
     return;
+  } else {
+    emptyState.style.display = 'none';
+    gallery.style.display = 'flex';
   }
 
   vePathAImages.forEach(function(img, index) {
@@ -2892,26 +2918,31 @@ function veRenderImageGallery() {
 
     gallery.appendChild(card);
   });
+
+  // Auto-scroll to the right (newest image)
+  setTimeout(function() {
+    gallery.scrollLeft = gallery.scrollWidth;
+  }, 0);
 }
 
-// Drag & Drop handlers for image gallery
+// Drag & Drop handlers for image gallery (works for both empty state and gallery)
 function veGalleryDragOver(event) {
   event.preventDefault();
   event.stopPropagation();
-  var gallery = document.getElementById('ve-a-gallery');
-  if (gallery) {
-    gallery.style.borderColor = '#6366f1';
-    gallery.style.backgroundColor = 'rgba(99, 102, 241, 0.05)';
+  var target = event.currentTarget;
+  if (target) {
+    target.style.borderColor = '#6366f1';
+    target.style.backgroundColor = 'rgba(99, 102, 241, 0.05)';
   }
 }
 
 function veGalleryDragLeave(event) {
   event.preventDefault();
   event.stopPropagation();
-  var gallery = document.getElementById('ve-a-gallery');
-  if (gallery) {
-    gallery.style.borderColor = 'var(--border)';
-    gallery.style.backgroundColor = 'transparent';
+  var target = event.currentTarget;
+  if (target) {
+    target.style.borderColor = 'var(--border)';
+    target.style.backgroundColor = target.id === 've-a-gallery-empty' ? 'var(--surface)' : 'transparent';
   }
 }
 
@@ -2919,10 +2950,10 @@ function veGalleryDrop(event) {
   event.preventDefault();
   event.stopPropagation();
 
-  var gallery = document.getElementById('ve-a-gallery');
-  if (gallery) {
-    gallery.style.borderColor = 'var(--border)';
-    gallery.style.backgroundColor = 'transparent';
+  var target = event.currentTarget;
+  if (target) {
+    target.style.borderColor = 'var(--border)';
+    target.style.backgroundColor = target.id === 've-a-gallery-empty' ? 'var(--surface)' : 'transparent';
   }
 
   var files = event.dataTransfer && event.dataTransfer.files;
