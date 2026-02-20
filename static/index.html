@@ -1347,16 +1347,11 @@ function veCapturePreview() {
         document.querySelector('[data-tab="visual-editor"]').classList.add('active');
         document.getElementById('tab-visual-editor').classList.add('active');
 
-        // If form is already open and on Path A, just reload the screenshot
-        var formAlreadyOpen = document.getElementById('ve-form').style.display !== 'none' && veCurrentPath === 'A';
+        // Always open/reset form and select Path A (works for first and subsequent captures)
+        veShowForm();
+        veSelectPath('A');
 
-        if (!formAlreadyOpen) {
-          // Open New Request form and select Path A
-          veShowForm();
-          veSelectPath('A');
-        }
-
-        // Auto-load the screenshot into Path A (clears any previous)
+        // Auto-load the screenshot into Path A
         veScreenshotB64 = screenshotB64;
         veCompositeB64 = null; // Clear previous drawing
         veSetupPathACanvases(dataUrl);

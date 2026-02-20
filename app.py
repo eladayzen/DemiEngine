@@ -675,9 +675,9 @@ async def visual_layout(req: VisualLayoutRequest):  # noqa: F811
         response = client.messages.create(
             model="claude-sonnet-4-5-20250929",
             max_tokens=2048,
-            system=VISUAL_LAYOUT_SYSTEM,
+            system=VISUAL_LAYOUT_SYSTEM + "\n\nIMPORTANT: Before using the tool, write 1-2 sentences in simple language explaining what you understand from the request and what changes you're making.",
             tools=[GAMEPLAY_TOOL],
-            tool_choice={"type": "any"},
+            tool_choice={"type": "auto"},
             messages=[{"role": "user", "content": content}]
         )
     except Exception as e:
@@ -696,14 +696,22 @@ async def visual_layout(req: VisualLayoutRequest):  # noqa: F811
     if not tool_result:
         raise HTTPException(status_code=500, detail="AI did not return a layout. Try adding more detail.")
 
-    # Generate simple reasoning and complexity assessment
-    reasoning_simple = reasoning_text.strip() if reasoning_text.strip() else "I've analyzed your request and created a new layout accordingly."
-
     # Assess complexity based on the layout changes
     tableau = tool_result.get("tableau", [])
     num_cards = len(tableau)
     num_cols = max((c["col"] for c in tableau), default=0) + 1
     draw_pile_count = len(tool_result.get("draw_pile", []))
+    foundation = tool_result.get("foundation_card", "unknown")
+
+    # Generate simple reasoning - use Claude's text or create descriptive fallback
+    if reasoning_text.strip():
+        reasoning_simple = reasoning_text.strip()
+    else:
+        # Create better fallback based on actual layout
+        reasoning_simple = f"I've created a layout with foundation {foundation}, {num_cards} tableau cards arranged in {num_cols} column{'s' if num_cols != 1 else ''}"
+        if draw_pile_count > 0:
+            reasoning_simple += f", and {draw_pile_count} card{'s' if draw_pile_count != 1 else ''} in the draw pile"
+        reasoning_simple += "."
 
     # Simple heuristic for complexity
     if num_cards <= 5 and num_cols <= 3 and draw_pile_count <= 3:
