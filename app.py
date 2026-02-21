@@ -503,8 +503,9 @@ class VisualLayoutRequest(BaseModel):
     reference_images: Optional[list[str]] = None  # base64 list — @ImageXX referenced images
     text_note: Optional[str] = None
     has_drawing: bool = False              # True when screenshot contains user-drawn marks baked in
-    level_index: int = 0
+    level_index: Optional[int] = None      # from dropdown or auto-detected (None = auto-detect)
     game_metadata: Optional[dict] = None   # game state metadata (level number, foundation, etc.)
+    category: str = "legacy"               # game_design, level_design, graphics_ui, animation, legacy
 
 
 class ReplaceAssetsRequest(BaseModel):
@@ -597,22 +598,197 @@ Do NOT include a grid field — the server computes it automatically.
 Use the generate_level_layout tool. Always verify the layout is solvable before outputting.
 """
 
+# Category-specific system prompts for multi-category Path A
+GAME_DESIGN_SYSTEM = """You are a game designer for a simplified solitaire card game.
+
+GAME RULES (current):
+- Foundation is one face-up card. Player taps tableau cards to play onto it.
+- Valid move: card value is exactly ±1 from foundation value
+- Values wrap: K↔A are adjacent (K→A and A→K both valid)
+- No suit matching — only value matters
+- Value order: A 2 3 4 5 6 7 8 9 10 J Q K (wraps to A)
+- After a tableau card is played, next face-down card in that column flips face-up
+- Win = all tableau cards played. Lose = no valid moves and draw pile empty
+
+YOUR TASK:
+The operator wants to modify CORE GAME MECHANICS that affect ALL levels.
+
+Read the request carefully and explain:
+1. What specific rule/mechanic they want to change
+2. How this affects gameplay across all levels
+3. What implementation changes are needed (specific config fields to modify)
+4. Any gameplay implications or balance concerns
+
+Be specific about which config fields need to change (e.g., "Set mechanics.allow_suit_matching to true").
+
+DO NOT use the generate_level_layout tool — this is a mechanics change, not a level layout change.
+"""
+
+LEVEL_DESIGN_SYSTEM = """You are a level designer for a simplified solitaire card game.
+
+GAME RULES:
+- Foundation is one face-up card. Player taps tableau cards to play onto it.
+- Valid move: card value is exactly ±1 from foundation value
+- Values wrap: K↔A are adjacent (K→A and A→K both valid)
+- No suit matching — only value matters
+- Value order: A 2 3 4 5 6 7 8 9 10 J Q K (wraps to A)
+- After a tableau card is played, next face-down card in that column flips face-up
+- Win = all tableau cards played. Lose = no valid moves and draw pile empty
+
+CARD CODES:
+- Values: A 2 3 4 5 6 7 8 9 10 J Q K
+- Suits: H D C S (Hearts, Diamonds, Clubs, Spades)
+- Examples: "7H", "10S", "AS", "KD"
+
+LAYOUT FORMAT:
+- col: 0-based column index, left to right
+- row: 0 = top face-up card, 1+ = face-down cards beneath
+- face_up: true for row=0, false for row>0 (unless specified otherwise)
+
+READING DRAWN ANNOTATIONS:
+When the screenshot contains operator-drawn marks (arrows, boxes, lines, X, circles):
+  → Arrow = move card/column from tail to arrow point
+  □ Box = resize, regroup, or restructure enclosed area
+  ✕ X mark = remove this card/column
+  + or circle = add something here
+  Line between A→B = relationship or path from A to B
+  Number label = set column/row to that count
+
+YOUR TASK:
+The operator is modifying a SPECIFIC LEVEL (Level {level_number}).
+
+1. Read all visual marks and text instructions carefully
+2. Work out the FULL solve_sequence — verify every move is valid ±1 before proceeding
+3. Use generate_level_layout tool to output the updated layout
+4. Keep it simple: 3-8 tableau cards, max 2 face-down rows per column
+5. DO NOT include grid — auto-computed by server
+
+When outputting reasoning:
+- First describe what you see in the screenshot/annotations
+- Explain what changes you're making to THIS level
+- Confirm the level is still solvable
+"""
+
+GRAPHICS_UI_SYSTEM = """You are a UI/UX designer for a mobile card game playable ad.
+
+CURRENT VISUAL CONFIG STRUCTURE:
+- Colors: background_color, card_back_color, table_felt_color, card_border_color, foundation_border_color
+- Text: font_family, font_color, title_font_size
+- Card styling: card_border_width, card_corner_radius, card_shadow
+- UI elements: button styles, text positions
+
+YOUR TASK:
+The operator wants to modify VISUAL/UI elements that affect the ENTIRE game.
+
+Read the request and screenshot carefully, then explain:
+1. What specific visual elements they want to change
+2. Which config fields need to be updated (be specific: "visual.card_border_color")
+3. Exact values to use (colors as hex codes, sizes as pixels)
+4. Any visual hierarchy or accessibility concerns
+
+DO NOT use the generate_level_layout tool — this is a styling change, not a level layout change.
+
+If the request involves reference images or Nanobanana outputs, describe how the visual style should be adapted.
+"""
+
+ANIMATION_SYSTEM = """You are a motion designer for a mobile card game playable ad.
+
+CURRENT ANIMATION CONFIG:
+- Card flip speed, slide timing, bounce effects
+- Particle systems (sparkles, confetti, etc.)
+- Transition easing functions
+- Visual feedback (tap ripple, success animations)
+
+YOUR TASK:
+The operator wants to add or modify ANIMATION/MOTION that affects the ENTIRE game.
+
+Read the request carefully and explain:
+1. What specific animation or effect they want
+2. Where it should appear (which game event triggers it)
+3. Technical approach (CSS animation, particle system, timing function)
+4. Performance implications (mobile devices have limits)
+
+DO NOT use the generate_level_layout tool — this is an animation change, not a level layout change.
+
+Focus on juice and game feel — what makes interactions satisfying.
+"""
+
+CATEGORY_PROMPTS = {
+    "game_design": GAME_DESIGN_SYSTEM,
+    "level_design": LEVEL_DESIGN_SYSTEM,
+    "graphics_ui": GRAPHICS_UI_SYSTEM,
+    "animation": ANIMATION_SYSTEM,
+    "legacy": VISUAL_LAYOUT_SYSTEM,
+}
+
+
+def detect_level_number(
+    category: str,
+    level_index: Optional[int],
+    game_metadata: Optional[dict],
+    text_note: Optional[str]
+) -> Optional[int]:
+    """
+    Detect which level number is being modified using priority system:
+    1. Explicit user selection (dropdown)
+    2. Game metadata (from Capture button)
+    3. Text parsing (search for "level 3", "lv2", etc.)
+    4. Default to None (will use 1 as fallback in prompt)
+    """
+    # Priority 1: Explicit selection
+    if level_index is not None and level_index >= 0:
+        return level_index
+
+    # Priority 2: Game metadata
+    if game_metadata and "level_number" in game_metadata:
+        return game_metadata["level_number"]
+
+    # Priority 3: Text parsing
+    if text_note:
+        import re
+        match = re.search(r'\b(?:level|lv)\s*(\d+)\b', text_note, re.IGNORECASE)
+        if match:
+            return int(match.group(1))
+
+    # Priority 4: Return None (caller will use default)
+    return None
+
 
 @app.post("/api/visual/layout")
 async def visual_layout(req: VisualLayoutRequest):  # noqa: F811
     """
     Path A endpoint: Claude Vision reads screenshot + optional annotations/reference/text
     and returns an updated LevelLayout reflecting the requested positional changes.
+    Supports multi-category system with category-specific prompting.
     """
+    # Detect level number for Level Design category
+    level_number = None
+    if req.category == "level_design":
+        level_number = detect_level_number(
+            req.category,
+            req.level_index,
+            req.game_metadata,
+            req.text_note
+        )
+        if level_number is None:
+            level_number = 1  # Default fallback
+
     has_ann = bool(req.annotations)
     has_ref = bool(req.nanobanana_reference)
     num_ref_images = len(req.reference_images) if req.reference_images else 0
-    log.info(f"POST /api/visual/layout — level={req.level_index}, has_drawing={req.has_drawing}, annotations={has_ann}, nanobanana_ref={has_ref}, ref_images={num_ref_images}, note={repr((req.text_note or '')[:60])}")
+    log.info(f"POST /api/visual/layout — category={req.category}, level={level_number}, has_drawing={req.has_drawing}, annotations={has_ann}, nanobanana_ref={has_ref}, ref_images={num_ref_images}, note={repr((req.text_note or '')[:60])}")
     api_key = os.getenv("ANTHROPIC_API_KEY")
     if not api_key:
         raise HTTPException(status_code=500, detail="ANTHROPIC_API_KEY not configured in .env")
 
     client = anthropic_sdk.Anthropic(api_key=api_key)
+
+    # Select system prompt based on category
+    system_prompt = CATEGORY_PROMPTS.get(req.category, CATEGORY_PROMPTS["legacy"])
+
+    # Inject level number into prompt if applicable
+    if level_number is not None:
+        system_prompt = system_prompt.replace("{level_number}", str(level_number))
 
     # Build the message content — always include screenshot, optionally others
     content = []
@@ -676,17 +852,28 @@ async def visual_layout(req: VisualLayoutRequest):  # noqa: F811
         if context_parts:
             context_text = f"Game state context: {', '.join(context_parts)}\n\n" + context_text
 
-    content.append({"type": "text", "text": f"{context_text}\nUse the generate_level_layout tool to return the updated layout."})
+    # Final instruction based on category
+    if req.category in ("level_design", "legacy"):
+        content.append({"type": "text", "text": f"{context_text}\nUse the generate_level_layout tool to return the updated layout."})
+    else:
+        content.append({"type": "text", "text": f"{context_text}"})
+
+    # Decide tool usage based on category
+    # Build API call parameters conditionally
+    api_params = {
+        "model": "claude-sonnet-4-5-20250929",
+        "max_tokens": 2048,
+        "system": system_prompt + "\n\nIMPORTANT: Write 1-2 sentences in simple language explaining what you understand from the request and what changes you're making.",
+        "messages": [{"role": "user", "content": content}]
+    }
+
+    # Only add tools if needed (level_design or legacy)
+    if req.category in ("level_design", "legacy"):
+        api_params["tools"] = [GAMEPLAY_TOOL]
+        api_params["tool_choice"] = {"type": "auto"}
 
     try:
-        response = client.messages.create(
-            model="claude-sonnet-4-5-20250929",
-            max_tokens=2048,
-            system=VISUAL_LAYOUT_SYSTEM + "\n\nIMPORTANT: Before using the tool, write 1-2 sentences in simple language explaining what you understand from the request and what changes you're making.",
-            tools=[GAMEPLAY_TOOL],
-            tool_choice={"type": "auto"},
-            messages=[{"role": "user", "content": content}]
-        )
+        response = client.messages.create(**api_params)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Claude API error: {e}")
 
@@ -700,6 +887,25 @@ async def visual_layout(req: VisualLayoutRequest):  # noqa: F811
         elif block.type == "tool_use" and block.name == "generate_level_layout":
             tool_result = block.input
 
+    # For non-layout categories (game_design, graphics_ui, animation), no tool result expected
+    if req.category in ("game_design", "graphics_ui", "animation"):
+        if not reasoning_text.strip():
+            raise HTTPException(status_code=500, detail="AI did not provide reasoning for this change.")
+
+        result_payload = {
+            "layout": None,
+            "solve_sequence": [],
+            "reasoning": {
+                "simple": reasoning_text.strip(),
+                "complexity": "n/a"  # No complexity for non-layout changes
+            },
+            "category": req.category,
+            "level_number": level_number,
+        }
+        log.info(f"visual/layout OK — category={req.category}, no layout (text-only response)")
+        return result_payload
+
+    # For level_design and legacy, expect tool result
     if not tool_result:
         raise HTTPException(status_code=500, detail="AI did not return a layout. Try adding more detail.")
 
@@ -728,7 +934,6 @@ async def visual_layout(req: VisualLayoutRequest):  # noqa: F811
     else:
         complexity = "moderate"
 
-    tableau = tool_result.get("tableau", [])
     num_cols = max((c["col"] for c in tableau), default=0) + 1
     cell_width = max(56, min(90, int(360 // num_cols)))
     grid = GridConfig(cell_width=cell_width, cell_height=110, origin_x=0.5, origin_y=0.18)
@@ -755,9 +960,11 @@ async def visual_layout(req: VisualLayoutRequest):  # noqa: F811
         "reasoning": {
             "simple": reasoning_simple,
             "complexity": complexity
-        }
+        },
+        "category": req.category,
+        "level_number": level_number,
     }
-    log.info(f"visual/layout OK — foundation={layout.foundation_card}, {len(layout.tableau)} tableau cards")
+    log.info(f"visual/layout OK — category={req.category}, level={level_number}, foundation={layout.foundation_card}, {len(layout.tableau)} tableau cards")
     return result_payload
 
 

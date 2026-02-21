@@ -511,25 +511,55 @@
         <button class="ve-tool-btn" onclick="veHideForm()">✕ Cancel</button>
       </div>
 
-      <!-- Step 1 — Choose path (shown immediately) -->
-      <div id="ve-step-path">
+      <!-- Step 1 — Choose category (shown immediately) -->
+      <div id="ve-step-category">
         <div class="ve-step-header"><span class="ve-step-num">1</span> What do you want to change?</div>
         <div class="ve-path-btns">
-          <button class="ve-path-btn" id="ve-btn-A" onclick="veSelectPath('A')">
-            <div style="font-size:22px">📐</div>
-            <div style="font-weight:600; margin-top:6px">Positioning &amp; Layout</div>
-            <div style="font-size:12px; color:var(--muted); margin-top:4px">Move cards, change grid, resize areas</div>
+          <button class="ve-path-btn" id="ve-btn-game-design" onclick="veSelectCategory('game_design')">
+            <div style="font-size:22px">🎮</div>
+            <div style="font-weight:600; margin-top:6px">Game Design</div>
+            <div style="font-size:11px; color:#6366f1; margin-top:2px">Global</div>
+            <div style="font-size:12px; color:var(--muted); margin-top:4px">Core mechanics, rules, game-wide settings</div>
           </button>
-          <button class="ve-path-btn" id="ve-btn-B" onclick="veSelectPath('B')" style="display:none">
+          <button class="ve-path-btn" id="ve-btn-level-design" onclick="veSelectCategory('level_design')">
+            <div style="font-size:22px">🎯</div>
+            <div style="font-weight:600; margin-top:6px">Level Design</div>
+            <div style="font-size:11px; color:#0ea5e9; margin-top:2px">Level-specific</div>
+            <div style="font-size:12px; color:var(--muted); margin-top:4px">Puzzle layouts, card positions for specific level</div>
+          </button>
+          <button class="ve-path-btn" id="ve-btn-graphics-ui" onclick="veSelectCategory('graphics_ui')">
             <div style="font-size:22px">🎨</div>
-            <div style="font-weight:600; margin-top:6px">Style from Reference</div>
-            <div style="font-size:12px; color:var(--muted); margin-top:4px">Generate assets from a reference image</div>
+            <div style="font-weight:600; margin-top:6px">Graphics &amp; UI</div>
+            <div style="font-size:11px; color:#6366f1; margin-top:2px">Global</div>
+            <div style="font-size:12px; color:var(--muted); margin-top:4px">Colors, fonts, UI elements, visual styling</div>
+          </button>
+          <button class="ve-path-btn" id="ve-btn-animation" onclick="veSelectCategory('animation')">
+            <div style="font-size:22px">✨</div>
+            <div style="font-weight:600; margin-top:6px">Animation &amp; Polish</div>
+            <div style="font-size:11px; color:#6366f1; margin-top:2px">Global</div>
+            <div style="font-size:12px; color:var(--muted); margin-top:4px">Motion, timing, juice, visual effects</div>
+          </button>
+          <button class="ve-path-btn" id="ve-btn-legacy" onclick="veSelectCategory('legacy')">
+            <div style="font-size:22px">📝</div>
+            <div style="font-weight:600; margin-top:6px">Legacy</div>
+            <div style="font-size:11px; color:var(--muted); margin-top:2px">Auto-detected</div>
+            <div style="font-size:12px; color:var(--muted); margin-top:4px">Free-form requests (advanced users)</div>
           </button>
           <button class="ve-path-btn" id="ve-btn-C" onclick="veSelectPath('C')">
             <div style="font-size:22px">✏️</div>
             <div style="font-weight:600; margin-top:6px">Edit an Asset</div>
+            <div style="font-size:11px; color:var(--muted); margin-top:2px">Path C</div>
             <div style="font-size:12px; color:var(--muted); margin-top:4px">Select an asset and describe the change</div>
           </button>
+        </div>
+
+        <!-- Level selection dropdown (shown only for Level Design) -->
+        <div id="ve-step-level" style="display:none; margin-top:16px">
+          <hr class="ve-divider">
+          <div class="ve-step-header"><span class="ve-step-num">1b</span> Which level are you modifying?</div>
+          <select id="ve-level-select" class="ve-select" onchange="veUpdateSelectedLevel()" style="width:100%; padding:10px; border:1px solid var(--border); border-radius:var(--radius); background:var(--bg); color:var(--text); font-size:14px">
+            <!-- Populated dynamically by JavaScript -->
+          </select>
         </div>
       </div>
 
@@ -1442,9 +1472,9 @@ function veCapturePreview() {
         document.querySelector('[data-tab="visual-editor"]').classList.add('active');
         document.getElementById('tab-visual-editor').classList.add('active');
 
-        // Always open/reset form and select Path A (works for first and subsequent captures)
+        // Always open/reset form and select Level Design category (works for first and subsequent captures)
         veShowForm();
-        veSelectPath('A');
+        veSelectCategory('level_design');
 
         // Add captured screenshot to gallery
         setTimeout(function() {
@@ -1464,6 +1494,32 @@ function veCapturePreview() {
 // ============================================================
 
 function onGenerate() {
+  // Check for critical conflicts before building
+  var conflicts = {};
+  vePendingChanges.forEach(function(req) {
+    if (req.category === 'level_design' && req.level_number) {
+      var key = req.level_number;
+      conflicts[key] = (conflicts[key] || 0) + 1;
+    }
+  });
+
+  var criticalConflicts = Object.keys(conflicts).filter(function(k) { return conflicts[k] > 1; });
+
+  if (criticalConflicts.length > 0) {
+    var msg = '⚠️ Potential Conflicts Detected\n\n';
+    msg += 'You have multiple requests targeting the same level(s):\n\n';
+    criticalConflicts.forEach(function(lvl) {
+      msg += '• Level ' + lvl + ': ' + conflicts[lvl] + ' pending requests\n';
+    });
+    msg += '\nWhen both are applied, the second request may overwrite changes from the first.\n\n';
+    msg += 'Recommendation: Review these requests and consider deleting duplicates before building.\n\n';
+    msg += 'Do you want to continue building anyway?';
+
+    if (!confirm(msg)) {
+      return;  // User cancelled
+    }
+  }
+
   var btn     = document.getElementById('generate-btn');
   var errEl   = document.getElementById('error-msg');
   var resultEl = document.getElementById('result-area');
@@ -1626,6 +1682,8 @@ veLoadImagesFromDisk(); // Load persisted reference images
 // VISUAL EDITOR - Remaining State
 // ============================================================
 var veCurrentPath      = null;
+var veCurrentCategory  = null;  // game_design, level_design, graphics_ui, animation, legacy
+var veSelectedLevel    = null;  // for level_design category
 var veScreenshotB64    = null;
 var veCompositeB64     = null;  // screenshot + drawing merged — sent to Claude
 var veCapturedMetadata = null;  // game state metadata from Capture button
@@ -1710,6 +1768,15 @@ function veResetForm() {
   if (aImprovedSection) aImprovedSection.style.display = 'none';
   var aReasoningSection = document.getElementById('ve-a-reasoning-section');
   if (aReasoningSection) aReasoningSection.style.display = 'none';
+
+  // Clear reasoning text content
+  var aReasoningSimple = document.getElementById('ve-a-reasoning-simple');
+  if (aReasoningSimple) aReasoningSimple.textContent = '';
+  var aReasoningComplexity = document.getElementById('ve-a-reasoning-complexity');
+  if (aReasoningComplexity) aReasoningComplexity.textContent = '';
+  var aTechnicalDetails = document.getElementById('ve-a-technical-details');
+  if (aTechnicalDetails) aTechnicalDetails.innerHTML = '';
+
   var aStatus = document.getElementById('ve-a-status');
   if (aStatus) {
     aStatus.textContent = '';
@@ -2012,7 +2079,71 @@ function veGetAnnotations() {
   return drCvs.toDataURL('image/png').split(',')[1];
 }
 
-// ── Path selection ─────────────────────────────────────────
+// ── Category selection (multi-category Path A) ────────────
+function veSelectCategory(category) {
+  veCurrentCategory = category;
+  veCurrentPath = 'A';  // All categories use Path A flow
+
+  // Highlight selected category button
+  document.querySelectorAll('.ve-path-btn').forEach(function(b) { b.classList.remove('selected'); });
+  document.getElementById('ve-btn-' + category.replace('_', '-')).classList.add('selected');
+
+  // Show/hide level dropdown (only for level_design)
+  var levelSection = document.getElementById('ve-step-level');
+  if (category === 'level_design') {
+    // Populate level dropdown with existing levels
+    var select = document.getElementById('ve-level-select');
+    var currentLevels = getLevelCount();  // Get from Levels tab
+    select.innerHTML = '';
+    for (var i = 1; i <= currentLevels; i++) {
+      var opt = document.createElement('option');
+      opt.value = i;
+      opt.textContent = 'Level ' + i;
+      select.appendChild(opt);
+    }
+    // Add "Add new level" option (user specifies number in text)
+    var newOpt = document.createElement('option');
+    newOpt.value = -1;
+    newOpt.textContent = '➕ Add new level (specify number in description)';
+    select.appendChild(newOpt);
+
+    levelSection.style.display = 'block';
+    veSelectedLevel = currentLevels > 0 ? 1 : null;  // Default to Level 1 if exists, else null
+  } else {
+    levelSection.style.display = 'none';
+    veSelectedLevel = null;
+  }
+
+  // Show Path A form
+  document.getElementById('ve-path-a-form').style.display = 'block';
+  document.getElementById('ve-path-b-form').style.display = 'none';
+  document.getElementById('ve-path-c-form').style.display = 'none';
+
+  veWirePathAUpload();
+}
+
+// Helper: get current number of levels from Levels tab
+function getLevelCount() {
+  var container = document.getElementById('levels-container');
+  if (!container) return 3;  // Default fallback
+  // Count only .level-card elements (not other children)
+  return container.querySelectorAll('.level-card').length;
+}
+
+// Update selected level when dropdown changes
+function veUpdateSelectedLevel() {
+  var select = document.getElementById('ve-level-select');
+  var val = parseInt(select.value);
+  if (val === -1) {
+    // "Add new level" selected - user will specify number in text
+    // Set to null so backend uses text detection
+    veSelectedLevel = null;
+  } else {
+    veSelectedLevel = val;
+  }
+}
+
+// ── Path selection (legacy for Path C) ────────────────────
 function veSelectPath(path) {
   veCurrentPath = path;
   document.querySelectorAll('.ve-path-btn').forEach(function(b) { b.classList.remove('selected'); });
@@ -2284,8 +2415,9 @@ function veApplyPathA() {
     reference_images: referenceImages.length > 0 ? referenceImages : null,
     has_drawing: hasDrawing,
     text_note: promptToUse || null,
-    level_index: 0,
-    game_metadata: veCapturedMetadata
+    level_index: veSelectedLevel || null,
+    game_metadata: veCapturedMetadata,
+    category: veCurrentCategory || 'legacy'
   };
 
   fetch('/api/visual/layout', {
@@ -2293,34 +2425,41 @@ function veApplyPathA() {
   })
   .then(function(r) { return r.ok ? r.json() : r.json().then(function(e) { throw new Error(e.detail || 'Server error'); }); })
   .then(function(data) {
-    // Apply to the first level card — fields use id pattern: {card.dataset.levelId}_fieldname
-    var levelCards = document.querySelectorAll('.level-card');
-    if (levelCards.length > 0) {
-      var card   = levelCards[0];
-      var cardId = card.dataset.levelId;
-      var layout = data.layout;
-      var fc  = document.getElementById(cardId + '_foundation_card');
-      var tab = document.getElementById(cardId + '_tableau');
-      var dp  = document.getElementById(cardId + '_draw_pile');
-      var cw  = document.getElementById(cardId + '_cell_width');
-      var ch  = document.getElementById(cardId + '_cell_height');
-      if (fc)  fc.value  = layout.foundation_card;
-      if (tab) tab.value = JSON.stringify(layout.tableau, null, 2);
-      if (dp)  dp.value  = (layout.draw_pile || []).join(', ');
-      if (cw)  cw.value  = layout.grid.cell_width;
-      if (ch)  ch.value  = layout.grid.cell_height;
-      var badge = card.querySelector('.tableau-badge');
-      if (badge) badge.textContent = (layout.tableau || []).length + ' cards';
-      veLog('Path A applied to level card "' + cardId + '": foundation=' + layout.foundation_card + ', ' + (layout.tableau||[]).length + ' tableau cards');
+    // Apply layout to form fields (only for level_design and legacy categories)
+    if (data.layout) {
+      var levelCards = document.querySelectorAll('.level-card');
+      if (levelCards.length > 0) {
+        var card   = levelCards[0];
+        var cardId = card.dataset.levelId;
+        var layout = data.layout;
+        var fc  = document.getElementById(cardId + '_foundation_card');
+        var tab = document.getElementById(cardId + '_tableau');
+        var dp  = document.getElementById(cardId + '_draw_pile');
+        var cw  = document.getElementById(cardId + '_cell_width');
+        var ch  = document.getElementById(cardId + '_cell_height');
+        if (fc)  fc.value  = layout.foundation_card;
+        if (tab) tab.value = JSON.stringify(layout.tableau, null, 2);
+        if (dp)  dp.value  = (layout.draw_pile || []).join(', ');
+        if (cw)  cw.value  = layout.grid.cell_width;
+        if (ch)  ch.value  = layout.grid.cell_height;
+        var badge = card.querySelector('.tableau-badge');
+        if (badge) badge.textContent = (layout.tableau || []).length + ' cards';
+        veLog('Path A applied to level card "' + cardId + '": foundation=' + layout.foundation_card + ', ' + (layout.tableau||[]).length + ' tableau cards');
+      } else {
+        veLog('Warning: no level cards found in form — switch to Levels tab and add a level first');
+      }
     } else {
-      veLog('Warning: no level cards found in form — switch to Levels tab and add a level first');
+      // Non-layout category (Game Design, Graphics & UI, Animation) - no form fields to update
+      veLog('Received reasoning for ' + (data.category || 'unknown') + ' category - no layout changes');
     }
 
     // Store data for approval
     window.vePathAApprovalData = {
       layout: data.layout,
       solve_sequence: data.solve_sequence,
-      reasoning: data.reasoning || {}
+      reasoning: data.reasoning || {},
+      category: data.category || 'legacy',
+      level_number: data.level_number || null
     };
 
     // Show reasoning section
@@ -2351,17 +2490,31 @@ function veApplyPathA() {
     complexityEl.textContent = complexityText;
     complexityEl.style.cssText += complexityColor;
 
-    // 3. Technical details
+    // 3. Technical details (only for layout categories)
     var techHtml = '';
-    techHtml += 'Foundation: ' + layout.foundation_card + '\n';
-    techHtml += 'Tableau: ' + layout.tableau.length + ' cards in ' +
-            (Math.max.apply(null, layout.tableau.map(function(c) { return c.col; })) + 1) + ' columns\n';
-    if (layout.draw_pile && layout.draw_pile.length > 0) {
-      techHtml += 'Draw pile: ' + layout.draw_pile.length + ' cards\n';
-    }
-    techHtml += 'Grid: ' + layout.grid.cell_width + 'x' + layout.grid.cell_height + ', origin (' + layout.grid.origin_x + ', ' + layout.grid.origin_y + ')\n';
-    if (data.solve_sequence && data.solve_sequence.length > 0) {
-      techHtml += '\nSolve sequence: ' + data.solve_sequence.join(' → ');
+    if (layout) {
+      techHtml += 'Foundation: ' + layout.foundation_card + '\n';
+      techHtml += 'Tableau: ' + layout.tableau.length + ' cards in ' +
+              (Math.max.apply(null, layout.tableau.map(function(c) { return c.col; })) + 1) + ' columns\n';
+      if (layout.draw_pile && layout.draw_pile.length > 0) {
+        techHtml += 'Draw pile: ' + layout.draw_pile.length + ' cards\n';
+      }
+      techHtml += 'Grid: ' + layout.grid.cell_width + 'x' + layout.grid.cell_height + ', origin (' + layout.grid.origin_x + ', ' + layout.grid.origin_y + ')\n';
+      if (data.solve_sequence && data.solve_sequence.length > 0) {
+        techHtml += '\nSolve sequence: ' + data.solve_sequence.join(' → ');
+      }
+    } else {
+      // Non-layout category - show category info instead
+      var categoryName = data.category || 'unknown';
+      var categoryLabels = {
+        'game_design': '🎮 Game Design (Global)',
+        'graphics_ui': '🎨 Graphics & UI (Global)',
+        'animation': '✨ Animation & Polish (Global)',
+        'legacy': '📝 Legacy'
+      };
+      techHtml += 'Category: ' + (categoryLabels[categoryName] || categoryName) + '\n';
+      techHtml += 'Scope: Affects entire game (no specific level)\n';
+      techHtml += '\nNote: Changes will be applied when you build.';
     }
 
     document.getElementById('ve-a-reasoning-technical').textContent = techHtml;
@@ -2370,7 +2523,11 @@ function veApplyPathA() {
     document.getElementById('ve-a-improved-section').style.display = 'none';
     document.getElementById('ve-a-reasoning-section').style.display = 'block';
 
-    status.textContent = '✓ Layout analyzed! Review the reasoning below.';
+    if (layout) {
+      status.textContent = '✓ Layout analyzed! Review the reasoning below.';
+    } else {
+      status.textContent = '✓ Request analyzed! Review the reasoning below.';
+    }
     status.style.color = '#22c55e';
 
     // Scroll to reasoning
@@ -2394,13 +2551,18 @@ function veApprovePathA() {
   }
 
   var data = window.vePathAApprovalData;
+  var reasoning = data.reasoning || {};
 
   // Add to pending changes
   veAddPendingChange(
     'A',
     veScreenshotB64,
     veCompositeB64 || null,
-    data.solve_sequence ? 'Solve: ' + data.solve_sequence.join(' → ') : 'Layout updated'
+    data.solve_sequence ? 'Solve: ' + data.solve_sequence.join(' → ') : 'Layout updated',
+    data.category || 'legacy',
+    data.level_number || null,
+    reasoning.simple || 'Layout updated',
+    reasoning.complexity || 'n/a'
   );
 
   veLog('Path A approved and added to pending requests');
@@ -3580,22 +3742,50 @@ function veUpdateAssetPreview() {
 // ── History log ────────────────────────────────────────────
 // ── Change queue management ───────────────────────────────
 
-function veAddPendingChange(type, thumbCleanB64, thumbMarkedB64, note) {
+function veAddPendingChange(type, thumbCleanB64, thumbMarkedB64, note, category, level_number, reasoning, complexity) {
   var change = {
     id: Date.now() + '_' + Math.random().toString(36).substr(2, 9),
     type: type,
     clean: thumbCleanB64,
     marked: thumbMarkedB64,
     note: note,
-    timestamp: new Date().toLocaleString()
+    timestamp: new Date().toLocaleString(),
+    category: category || 'legacy',
+    level_number: level_number || null,
+    reasoning: reasoning || note,
+    complexity: complexity || 'n/a'
   };
   vePendingChanges.push(change);
+  veCheckConflicts();  // Check for level conflicts
   veRenderPending();
+}
+
+function veCheckConflicts() {
+  // Count how many pending requests target each level
+  var levelCounts = {};
+
+  vePendingChanges.forEach(function(req) {
+    if (req.category === 'level_design' && req.level_number) {
+      var key = 'level_' + req.level_number;
+      levelCounts[key] = (levelCounts[key] || 0) + 1;
+    }
+  });
+
+  // Mark requests with conflicts
+  vePendingChanges.forEach(function(req) {
+    if (req.category === 'level_design' && req.level_number) {
+      var key = 'level_' + req.level_number;
+      req.has_conflict = levelCounts[key] > 1;
+    } else {
+      req.has_conflict = false;
+    }
+  });
 }
 
 function veDeletePendingChange(changeId) {
   if (!confirm('Delete this pending change?')) return;
   vePendingChanges = vePendingChanges.filter(function(c) { return c.id !== changeId; });
+  veCheckConflicts();  // Recheck conflicts after deletion
   veRenderPending();
 }
 
@@ -3648,21 +3838,79 @@ function veRenderPending() {
       li.appendChild(thumbRow);
     }
 
+    // Category badge
+    var badgeText = '';
+    var badgeStyle = '';
+    if (item.category === 'game_design') {
+      badgeText = '🎮 Game Design (Global)';
+      badgeStyle = 'background:#6366f120;color:#6366f1;border:1px solid #6366f140';
+    } else if (item.category === 'level_design') {
+      badgeText = '🎯 Level ' + (item.level_number || '?');
+      badgeStyle = 'background:#0ea5e920;color:#0ea5e9;border:1px solid #0ea5e940';
+    } else if (item.category === 'graphics_ui') {
+      badgeText = '🎨 Graphics & UI (Global)';
+      badgeStyle = 'background:#a855f720;color:#a855f7;border:1px solid #a855f740';
+    } else if (item.category === 'animation') {
+      badgeText = '✨ Animation (Global)';
+      badgeStyle = 'background:#f59e0b20;color:#f59e0b;border:1px solid #f59e0b40';
+    } else {
+      badgeText = '📝 Legacy';
+      badgeStyle = 'background:var(--muted)20;color:var(--muted);border:1px solid var(--muted)40';
+    }
+
     var badge = document.createElement('span');
-    badge.className = 've-badge ' + item.type;
-    badge.textContent = 'Path ' + item.type;
-    var note = document.createElement('span');
-    note.className = 've-status';
-    note.textContent = item.note;
-    var spacer = document.createElement('span');
-    spacer.style.flex = '1';
+    badge.className = 've-badge';
+    badge.textContent = badgeText;
+    badge.style.cssText = badgeStyle + ';font-size:11px;padding:4px 8px';
+
+    // Complexity badge (if applicable)
+    var complexityBadge = null;
+    if (item.complexity && item.complexity !== 'n/a') {
+      complexityBadge = document.createElement('span');
+      complexityBadge.className = 've-badge';
+      complexityBadge.textContent = item.complexity;
+      if (item.complexity === 'easy') {
+        complexityBadge.style.cssText = 'background:#22c55e20;color:#22c55e;border:1px solid #22c55e40;font-size:11px;padding:4px 8px;margin-left:6px';
+      } else if (item.complexity === 'risky') {
+        complexityBadge.style.cssText = 'background:#f9758320;color:#f97583;border:1px solid #f9758340;font-size:11px;padding:4px 8px;margin-left:6px';
+      } else {
+        complexityBadge.style.cssText = 'background:#f59e0b20;color:#f59e0b;border:1px solid #f59e0b40;font-size:11px;padding:4px 8px;margin-left:6px';
+      }
+    }
+
+    // Create content wrapper for badges, reasoning, and conflict warning
+    var contentWrap = document.createElement('div');
+    contentWrap.style.cssText = 'flex:1;display:flex;flex-direction:column;gap:8px';
+
+    var badgeRow = document.createElement('div');
+    badgeRow.style.display = 'flex';
+    badgeRow.style.alignItems = 'center';
+    badgeRow.appendChild(badge);
+    if (complexityBadge) badgeRow.appendChild(complexityBadge);
+
+    var reasoning = document.createElement('div');
+    reasoning.style.cssText = 'font-size:13px;color:var(--text);line-height:1.5';
+    reasoning.textContent = item.reasoning || item.note;
+
+    contentWrap.appendChild(badgeRow);
+    contentWrap.appendChild(reasoning);
+
+    // Add conflict warning if applicable
+    if (item.has_conflict) {
+      var warning = document.createElement('div');
+      warning.style.cssText = 'font-size:12px;color:#f59e0b;background:#f59e0b10;padding:6px 10px;border-left:3px solid #f59e0b;border-radius:4px';
+      warning.innerHTML = '⚠️ <strong>Conflict:</strong> Another pending request also modifies Level ' + item.level_number + '. These requests may conflict when applied together.';
+      contentWrap.appendChild(warning);
+    }
+
     var deleteBtn = document.createElement('button');
     deleteBtn.className = 've-small-btn';
-    deleteBtn.textContent = '❌ Delete';
-    deleteBtn.style.cssText = 'font-size:11px;padding:4px 10px;background:#f9758340;border-color:#f97583;color:#f97583';
+    deleteBtn.textContent = '❌';
+    deleteBtn.style.cssText = 'font-size:14px;padding:6px 12px;background:#f9758320;border-color:#f97583;color:#f97583';
     deleteBtn.onclick = function() { veDeletePendingChange(item.id); };
 
-    li.appendChild(badge); li.appendChild(note); li.appendChild(spacer); li.appendChild(deleteBtn);
+    li.appendChild(contentWrap);
+    li.appendChild(deleteBtn);
     list.appendChild(li);
   });
 }
