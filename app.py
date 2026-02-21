@@ -251,6 +251,174 @@ class GenerateRequest(BaseModel):
     seed: Optional[dict] = None
 
 
+class PendingRequest(BaseModel):
+    category: str
+    level_number: Optional[int] = None
+    reasoning: str
+    complexity: str
+
+
+class BuildWithRequestsRequest(BaseModel):
+    mechanics: dict
+    levels: dict
+    visual: dict
+    pending_requests: list[PendingRequest]
+    seed: Optional[dict] = None
+
+
+@app.post("/api/build-with-requests")
+async def build_with_requests(req: BuildWithRequestsRequest):
+    """
+    Smart build: Apply all pending requests using Claude, then generate the build.
+    Claude reads all pending requests and returns updated configs.
+    """
+    log.info(f"POST /api/build-with-requests — {len(req.pending_requests)} pending requests")
+
+    api_key = os.getenv("ANTHROPIC_API_KEY")
+    if not api_key:
+        raise HTTPException(status_code=500, detail="ANTHROPIC_API_KEY not configured in .env")
+
+    client = anthropic_sdk.Anthropic(api_key=api_key)
+
+    # Build the prompt with all pending requests
+    requests_text = "PENDING CHANGE REQUESTS:\n\n"
+    for i, pr in enumerate(req.pending_requests, 1):
+        category_labels = {
+            "game_design": "🎮 Game Design (Global)",
+            "level_design": f"🎯 Level Design (Level {pr.level_number})" if pr.level_number else "🎯 Level Design",
+            "graphics_ui": "🎨 Graphics & UI (Global)",
+            "animation": "✨ Animation & Polish (Global)",
+            "legacy": "📝 Legacy"
+        }
+        category_label = category_labels.get(pr.category, pr.category)
+
+        requests_text += f"{i}. {category_label}\n"
+        requests_text += f"   Reasoning: {pr.reasoning}\n"
+        requests_text += f"   Complexity: {pr.complexity}\n\n"
+
+    # Add current configs
+    current_configs = f"""
+CURRENT CONFIGURATIONS:
+
+=== MECHANICS.JSON ===
+{json.dumps(req.mechanics, indent=2)}
+
+=== LEVELS.JSON ===
+{json.dumps(req.levels, indent=2)}
+
+=== VISUAL.JSON ===
+{json.dumps(req.visual, indent=2)}
+
+{requests_text}
+
+Apply all these changes and return the updated configurations using the update_game_configs tool.
+"""
+
+    try:
+        response = client.messages.create(
+            model="claude-sonnet-4-5-20250929",
+            max_tokens=8000,
+            system=SMART_BUILD_SYSTEM,
+            tools=[UPDATE_CONFIGS_TOOL],
+            tool_choice={"type": "any"},
+            messages=[{"role": "user", "content": current_configs}]
+        )
+    except Exception as e:
+        log.error(f"Claude API error in build-with-requests: {e}")
+        raise HTTPException(status_code=500, detail=f"Claude API error: {e}")
+
+    # Extract tool result
+    tool_result = None
+    for block in response.content:
+        if block.type == "tool_use" and block.name == "update_game_configs":
+            tool_result = block.input
+            break
+
+    if not tool_result:
+        raise HTTPException(status_code=500, detail="AI did not return updated configs")
+
+    # Validate configs
+    try:
+        updated_mechanics = MechanicsConfig(**tool_result["mechanics"])
+        updated_levels = LevelsConfig(**tool_result["levels"])
+        updated_visual = VisualConfig(**tool_result["visual"])
+    except Exception as e:
+        log.warning(f"Config validation failed: {e}")
+        raise HTTPException(status_code=422, detail=f"Updated config validation failed: {e}")
+
+    changes_summary = tool_result.get("changes_summary", "Changes applied")
+    skipped = tool_result.get("skipped_requests", [])
+
+    log.info(f"Smart build: {changes_summary}")
+    if skipped:
+        log.warning(f"Skipped requests: {skipped}")
+
+    # Now proceed with normal build using updated configs
+    run_id = f"build_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+    folder = _run_dir(run_id)
+    folder.mkdir(parents=True, exist_ok=True)
+
+    # Save configs
+    _save_json(folder / "mechanics.json", updated_mechanics.dict())
+    _save_json(folder / "levels.json", updated_levels.dict())
+    _save_json(folder / "visual.json", updated_visual.dict())
+
+    if req.seed:
+        _save_json(folder / "seed.json", req.seed)
+
+    # Save a log of what was applied
+    _save_json(folder / "applied_requests.json", {
+        "requests": [pr.dict() for pr in req.pending_requests],
+        "changes_summary": changes_summary,
+        "skipped_requests": skipped
+    })
+
+    # Build self-contained HTML
+    template_path = STATIC_DIR / "engine_template.html"
+    if not template_path.exists():
+        raise HTTPException(status_code=500, detail="engine_template.html not found in static/")
+
+    # Embed assets
+    import base64 as b64mod
+    visual_dict = updated_visual.dict()
+    assets_embedded = {}
+    for slot in ASSET_SLOTS:
+        png_path = ASSETS_DIR / f"{slot['name']}.png"
+        if png_path.exists():
+            b64 = b64mod.b64encode(png_path.read_bytes()).decode("utf-8")
+            visual_dict[f"{slot['name']}_image"] = b64
+            assets_embedded[slot["name"]] = png_path.name
+            run_assets = folder / "assets"
+            run_assets.mkdir(exist_ok=True)
+            shutil.copy2(png_path, run_assets / f"{slot['name']}.png")
+
+    if assets_embedded:
+        log.info(f"Embedded project assets into build: {assets_embedded}")
+
+    full_config = {
+        "mechanics": updated_mechanics.dict(),
+        "levels": updated_levels.dict(),
+        "visual": visual_dict,
+    }
+    config_json = json.dumps(full_config)
+
+    template_html = template_path.read_text(encoding="utf-8")
+    output_html = template_html.replace("__GAME_CONFIG__", config_json)
+
+    html_path = folder / "index.html"
+    html_path.write_text(output_html, encoding="utf-8")
+
+    log.info(f"Smart build complete → {run_id}")
+
+    return {
+        "run_id": run_id,
+        "status": "ready",
+        "play_url": f"/runs/{run_id}/play",
+        "changes_summary": changes_summary,
+        "skipped_requests": skipped
+    }
+
+
 @app.post("/api/generate")
 async def generate(req: GenerateRequest):
     """
@@ -361,6 +529,69 @@ YOUR JOB:
 4. Keep levels simple: 3–8 tableau cards total, at most 2 face-down rows per column.
 5. Do NOT include grid sizing — that is computed automatically.
 """
+
+SMART_BUILD_SYSTEM = """You are a game configuration expert for a simplified solitaire card game.
+
+You receive:
+1. Current game configuration (mechanics, levels, visual settings)
+2. List of pending change requests from the operator
+
+Your job is to implement ALL requested changes and return updated configurations.
+
+GAME STRUCTURE:
+- mechanics.json: Core game rules (wrapping, suit matching, timing, etc.)
+- levels.json: Array of level objects, each with foundation_card, tableau, draw_pile, grid
+- visual.json: Visual styling (colors, fonts, card appearance, backgrounds)
+
+CHANGE CATEGORIES:
+- 🎮 Game Design (Global): Modify mechanics.json (e.g., disable wrapping, add timer)
+- 🎯 Level Design: Modify specific level in levels.json array (use level_number to find it)
+- 🎨 Graphics & UI (Global): Modify visual.json (colors, fonts, card styling)
+- ✨ Animation & Polish (Global): Modify visual.json (animation timings, effects)
+- 📝 Legacy: Can modify any config
+
+IMPORTANT RULES:
+1. Read ALL pending requests carefully before making ANY changes
+2. Apply changes in order: Game Design → Level Design → Graphics → Animation
+3. For Level Design: Find the level by index (level_number - 1 in the array)
+4. Validate all changes maintain game solvability and consistency
+5. If a request conflicts or is impossible, note it but continue with other changes
+6. Return COMPLETE configs (don't omit unchanged fields)
+
+Use the update_game_configs tool to return all three updated configuration objects.
+"""
+
+UPDATE_CONFIGS_TOOL = {
+    "name": "update_game_configs",
+    "description": "Return the updated game configuration objects after applying all pending requests.",
+    "input_schema": {
+        "type": "object",
+        "properties": {
+            "mechanics": {
+                "type": "object",
+                "description": "Complete mechanics configuration object"
+            },
+            "levels": {
+                "type": "object",
+                "description": "Complete levels configuration object with 'levels' array"
+            },
+            "visual": {
+                "type": "object",
+                "description": "Complete visual configuration object"
+            },
+            "changes_summary": {
+                "type": "string",
+                "description": "Brief summary of what changes were applied"
+            },
+            "skipped_requests": {
+                "type": "array",
+                "description": "List of requests that couldn't be applied (with reasons)",
+                "items": {"type": "string"}
+            }
+        },
+        "required": ["mechanics", "levels", "visual", "changes_summary"]
+    }
+}
 
 GAMEPLAY_TOOL = {
     "name": "generate_level_layout",

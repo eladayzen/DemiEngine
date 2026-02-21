@@ -1531,10 +1531,34 @@ function onGenerate() {
 
   var config = buildConfig();
 
-  fetch('/api/generate', {
+  // Determine which endpoint to use
+  var endpoint = '/api/generate';
+  var payload = config;
+
+  // If there are pending requests, use smart build
+  if (vePendingChanges.length > 0) {
+    endpoint = '/api/build-with-requests';
+    payload = {
+      mechanics: config.mechanics,
+      levels: config.levels,
+      visual: config.visual,
+      seed: config.seed,
+      pending_requests: vePendingChanges.map(function(req) {
+        return {
+          category: req.category || 'legacy',
+          level_number: req.level_number || null,
+          reasoning: req.reasoning || req.note,
+          complexity: req.complexity || 'n/a'
+        };
+      })
+    };
+    console.log('Using smart build with ' + vePendingChanges.length + ' pending request(s)');
+  }
+
+  fetch(endpoint, {
     method:  'POST',
     headers: { 'Content-Type': 'application/json' },
-    body:    JSON.stringify(config)
+    body:    JSON.stringify(payload)
   })
   .then(function(res) {
     if (!res.ok) return res.json().then(function(e) { throw new Error(e.detail || 'Unknown error'); });
@@ -1543,8 +1567,30 @@ function onGenerate() {
   .then(function(data) {
     lastPlayUrl = data.play_url;
     document.getElementById('preview-btn').href = lastPlayUrl;
-    document.getElementById('result-msg').textContent = 'Build ready! (' + data.run_id + ')';
+
+    // Show result message with changes summary if available
+    var resultMsg = 'Build ready! (' + data.run_id + ')';
+    if (data.changes_summary) {
+      resultMsg += '\n\n✨ ' + data.changes_summary;
+      if (data.skipped_requests && data.skipped_requests.length > 0) {
+        resultMsg += '\n\n⚠️ Some requests could not be applied:\n' + data.skipped_requests.join('\n');
+      }
+    }
+    document.getElementById('result-msg').textContent = resultMsg;
     resultEl.classList.add('visible');
+
+    // Move pending requests to applied changes
+    if (vePendingChanges.length > 0) {
+      veAppliedChanges.unshift({
+        run_id: data.run_id,
+        run_name: data.run_id,
+        changes: vePendingChanges.slice()  // Copy the array
+      });
+      vePendingChanges = [];  // Clear pending
+      veRenderPending();
+      veRenderApplied();
+      console.log('Moved ' + veAppliedChanges[0].changes.length + ' requests to applied');
+    }
 
     // Load into preview panel
     var iframe = document.getElementById('preview-iframe');
@@ -3789,8 +3835,197 @@ function veDeletePendingChange(changeId) {
   veRenderPending();
 }
 
+// Shared function to create a request card (used by both pending and applied)
+function veCreateRequestCard(item, showDeleteBtn) {
+  var li = document.createElement('li');
+  li.style.cssText = 'flex-wrap:wrap;cursor:pointer;transition:background 0.2s';
+
+  // Double-click to view details
+  li.ondblclick = function() {
+    veShowRequestDetails(item);
+  };
+
+  // Hover effect
+  li.onmouseenter = function() {
+    li.style.background = 'var(--surface)';
+  };
+  li.onmouseleave = function() {
+    li.style.background = '';
+  };
+
+  // Thumbnails (if any)
+  if (item.clean || item.marked) {
+    var thumbRow = document.createElement('div');
+    thumbRow.style.cssText = 'display:flex;gap:6px;align-items:flex-end;margin-right:8px';
+
+    if (item.clean) {
+      var wrap1 = document.createElement('div');
+      wrap1.style.cssText = 'text-align:center';
+      var lbl1 = document.createElement('div');
+      lbl1.style.cssText = 'font-size:10px;color:var(--muted);margin-bottom:2px';
+      lbl1.textContent = 'Original';
+      var img1 = document.createElement('img');
+      img1.src = 'data:image/png;base64,' + item.clean;
+      img1.className = 've-thumb';
+      wrap1.appendChild(lbl1);
+      wrap1.appendChild(img1);
+      thumbRow.appendChild(wrap1);
+    }
+
+    if (item.marked) {
+      var wrap2 = document.createElement('div');
+      wrap2.style.cssText = 'text-align:center';
+      var lbl2 = document.createElement('div');
+      lbl2.style.cssText = 'font-size:10px;color:#6366f1;font-weight:600;margin-bottom:2px';
+      lbl2.textContent = '✏ Analyzed';
+      var img2 = document.createElement('img');
+      img2.src = 'data:image/png;base64,' + item.marked;
+      img2.className = 've-thumb';
+      img2.style.border = '2px solid #6366f1';
+      wrap2.appendChild(lbl2);
+      wrap2.appendChild(img2);
+      thumbRow.appendChild(wrap2);
+    }
+
+    li.appendChild(thumbRow);
+  }
+
+  // Category badge
+  var badgeText = '';
+  var badgeStyle = '';
+  if (item.category === 'game_design') {
+    badgeText = '🎮 Game Design (Global)';
+    badgeStyle = 'background:#6366f120;color:#6366f1;border:1px solid #6366f140';
+  } else if (item.category === 'level_design') {
+    badgeText = '🎯 Level ' + (item.level_number || '?');
+    badgeStyle = 'background:#0ea5e920;color:#0ea5e9;border:1px solid #0ea5e940';
+  } else if (item.category === 'graphics_ui') {
+    badgeText = '🎨 Graphics & UI (Global)';
+    badgeStyle = 'background:#a855f720;color:#a855f7;border:1px solid #a855f740';
+  } else if (item.category === 'animation') {
+    badgeText = '✨ Animation (Global)';
+    badgeStyle = 'background:#f59e0b20;color:#f59e0b;border:1px solid #f59e0b40';
+  } else {
+    badgeText = '📝 Legacy';
+    badgeStyle = 'background:var(--muted)20;color:var(--muted);border:1px solid var(--muted)40';
+  }
+
+  var badge = document.createElement('span');
+  badge.className = 've-badge';
+  badge.textContent = badgeText;
+  badge.style.cssText = badgeStyle + ';font-size:11px;padding:4px 8px';
+
+  // Complexity badge (if applicable)
+  var complexityBadge = null;
+  if (item.complexity && item.complexity !== 'n/a') {
+    complexityBadge = document.createElement('span');
+    complexityBadge.className = 've-badge';
+    complexityBadge.textContent = item.complexity;
+    if (item.complexity === 'easy') {
+      complexityBadge.style.cssText = 'background:#22c55e20;color:#22c55e;border:1px solid #22c55e40;font-size:11px;padding:4px 8px;margin-left:6px';
+    } else if (item.complexity === 'risky') {
+      complexityBadge.style.cssText = 'background:#f9758320;color:#f97583;border:1px solid #f9758340;font-size:11px;padding:4px 8px;margin-left:6px';
+    } else {
+      complexityBadge.style.cssText = 'background:#f59e0b20;color:#f59e0b;border:1px solid #f59e0b40;font-size:11px;padding:4px 8px;margin-left:6px';
+    }
+  }
+
+  // Create content wrapper
+  var contentWrap = document.createElement('div');
+  contentWrap.style.cssText = 'flex:1;display:flex;flex-direction:column;gap:12px';
+
+  // Badge row
+  var badgeRow = document.createElement('div');
+  badgeRow.style.display = 'flex';
+  badgeRow.style.alignItems = 'center';
+  badgeRow.appendChild(badge);
+  if (complexityBadge) badgeRow.appendChild(complexityBadge);
+
+  // Main description (first sentence or up to 100 chars)
+  var reasoning = item.reasoning || item.note || '';
+  var mainDesc = reasoning.split('.')[0] + '.'; // First sentence
+  if (mainDesc.length > 100) mainDesc = reasoning.substring(0, 100) + '...';
+
+  var mainDescDiv = document.createElement('div');
+  mainDescDiv.style.cssText = 'font-size:14px;color:var(--text);line-height:1.6;font-weight:500';
+  mainDescDiv.textContent = mainDesc;
+
+  // Technical details (rest of reasoning, smaller and muted)
+  var techDetails = reasoning.substring(mainDesc.length).trim();
+  var techDetailsDiv = null;
+  if (techDetails && techDetails.length > 3) {
+    techDetailsDiv = document.createElement('div');
+    techDetailsDiv.style.cssText = 'font-size:12px;color:var(--muted);line-height:1.5;margin-top:4px';
+    techDetailsDiv.textContent = techDetails;
+  }
+
+  contentWrap.appendChild(badgeRow);
+  contentWrap.appendChild(mainDescDiv);
+  if (techDetailsDiv) contentWrap.appendChild(techDetailsDiv);
+
+  // Add conflict warning if applicable
+  if (item.has_conflict) {
+    var warning = document.createElement('div');
+    warning.style.cssText = 'font-size:12px;color:#f59e0b;background:#f59e0b10;padding:6px 10px;border-left:3px solid #f59e0b;border-radius:4px;margin-top:4px';
+    warning.innerHTML = '⚠️ <strong>Conflict:</strong> Another pending request also modifies Level ' + item.level_number + '. These requests may conflict when applied together.';
+    contentWrap.appendChild(warning);
+  }
+
+  li.appendChild(contentWrap);
+
+  // Delete button (only for pending)
+  if (showDeleteBtn) {
+    var deleteBtn = document.createElement('button');
+    deleteBtn.className = 've-small-btn';
+    deleteBtn.textContent = '❌';
+    deleteBtn.style.cssText = 'font-size:14px;padding:6px 12px;background:#f9758320;border-color:#f97583;color:#f97583';
+    deleteBtn.onclick = function(e) {
+      e.stopPropagation(); // Don't trigger double-click
+      veDeletePendingChange(item.id);
+    };
+    li.appendChild(deleteBtn);
+  }
+
+  return li;
+}
+
+// Show request details in popup
+function veShowRequestDetails(item) {
+  var modal = document.createElement('div');
+  modal.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.7);display:flex;align-items:center;justify-content:center;z-index:10000;padding:20px';
+  modal.onclick = function() { modal.remove(); };
+
+  var popup = document.createElement('div');
+  popup.style.cssText = 'background:var(--bg);border:1px solid var(--border);border-radius:var(--radius);padding:24px;max-width:700px;width:100%;max-height:80vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,0.3)';
+  popup.onclick = function(e) { e.stopPropagation(); };
+
+  // Category badge
+  var categoryLabels = {
+    'game_design': '🎮 Game Design (Global)',
+    'level_design': '🎯 Level ' + (item.level_number || '?'),
+    'graphics_ui': '🎨 Graphics & UI (Global)',
+    'animation': '✨ Animation (Global)',
+    'legacy': '📝 Legacy'
+  };
+
+  popup.innerHTML = '<div style="display:flex;justify-content:space-between;align-items:start;margin-bottom:20px">' +
+    '<div><h2 style="margin:0;font-size:18px">' + (categoryLabels[item.category] || 'Request Details') + '</h2>' +
+    (item.complexity && item.complexity !== 'n/a' ? '<div style="margin-top:8px;font-size:12px;color:var(--muted)">Complexity: <strong>' + item.complexity + '</strong></div>' : '') +
+    '</div>' +
+    '<button onclick="this.closest(\'.modal\').remove()" style="font-size:24px;background:none;border:none;color:var(--muted);cursor:pointer;line-height:1">×</button>' +
+    '</div>' +
+    '<div style="margin-bottom:16px"><strong style="font-size:13px;color:var(--muted);text-transform:uppercase;letter-spacing:1px">Full Description:</strong></div>' +
+    '<div style="font-size:15px;line-height:1.8;color:var(--text);white-space:pre-wrap">' + (item.reasoning || item.note || 'No description available') + '</div>' +
+    (item.timestamp ? '<div style="margin-top:20px;font-size:12px;color:var(--muted);border-top:1px solid var(--border);padding-top:12px">Created: ' + item.timestamp + '</div>' : '') +
+    '<div style="margin-top:16px;text-align:center"><button onclick="this.closest(\'.modal\').remove()" class="ve-small-btn" style="padding:8px 20px">Close</button></div>';
+
+  popup.className = 'modal';
+  modal.appendChild(popup);
+  document.body.appendChild(modal);
+}
+
 function veRenderPending() {
-  var list  = document.getElementById('ve-pending-list');
+  var list = document.getElementById('ve-pending-list');
   var empty = document.getElementById('ve-pending-empty');
   list.innerHTML = '';
   if (vePendingChanges.length === 0) {
@@ -3800,118 +4035,8 @@ function veRenderPending() {
   empty.style.display = 'none';
 
   vePendingChanges.forEach(function(item) {
-    var li = document.createElement('li');
-    li.style.flexWrap = 'wrap';
-
-    // Thumbnails
-    if (item.clean || item.marked) {
-      var thumbRow = document.createElement('div');
-      thumbRow.style.cssText = 'display:flex;gap:6px;align-items:flex-end;margin-right:8px';
-
-      if (item.clean) {
-        var wrap1 = document.createElement('div');
-        wrap1.style.cssText = 'text-align:center';
-        var lbl1 = document.createElement('div');
-        lbl1.style.cssText = 'font-size:10px;color:var(--muted);margin-bottom:2px';
-        lbl1.textContent = 'Original';
-        var img1 = document.createElement('img');
-        img1.src = 'data:image/png;base64,' + item.clean;
-        img1.className = 've-thumb';
-        wrap1.appendChild(lbl1); wrap1.appendChild(img1);
-        thumbRow.appendChild(wrap1);
-      }
-
-      if (item.marked) {
-        var wrap2 = document.createElement('div');
-        wrap2.style.cssText = 'text-align:center';
-        var lbl2 = document.createElement('div');
-        lbl2.style.cssText = 'font-size:10px;color:#6366f1;font-weight:600;margin-bottom:2px';
-        lbl2.textContent = '✏ Analyzed';
-        var img2 = document.createElement('img');
-        img2.src = 'data:image/png;base64,' + item.marked;
-        img2.className = 've-thumb';
-        img2.style.border = '2px solid #6366f1';
-        wrap2.appendChild(lbl2); wrap2.appendChild(img2);
-        thumbRow.appendChild(wrap2);
-      }
-
-      li.appendChild(thumbRow);
-    }
-
-    // Category badge
-    var badgeText = '';
-    var badgeStyle = '';
-    if (item.category === 'game_design') {
-      badgeText = '🎮 Game Design (Global)';
-      badgeStyle = 'background:#6366f120;color:#6366f1;border:1px solid #6366f140';
-    } else if (item.category === 'level_design') {
-      badgeText = '🎯 Level ' + (item.level_number || '?');
-      badgeStyle = 'background:#0ea5e920;color:#0ea5e9;border:1px solid #0ea5e940';
-    } else if (item.category === 'graphics_ui') {
-      badgeText = '🎨 Graphics & UI (Global)';
-      badgeStyle = 'background:#a855f720;color:#a855f7;border:1px solid #a855f740';
-    } else if (item.category === 'animation') {
-      badgeText = '✨ Animation (Global)';
-      badgeStyle = 'background:#f59e0b20;color:#f59e0b;border:1px solid #f59e0b40';
-    } else {
-      badgeText = '📝 Legacy';
-      badgeStyle = 'background:var(--muted)20;color:var(--muted);border:1px solid var(--muted)40';
-    }
-
-    var badge = document.createElement('span');
-    badge.className = 've-badge';
-    badge.textContent = badgeText;
-    badge.style.cssText = badgeStyle + ';font-size:11px;padding:4px 8px';
-
-    // Complexity badge (if applicable)
-    var complexityBadge = null;
-    if (item.complexity && item.complexity !== 'n/a') {
-      complexityBadge = document.createElement('span');
-      complexityBadge.className = 've-badge';
-      complexityBadge.textContent = item.complexity;
-      if (item.complexity === 'easy') {
-        complexityBadge.style.cssText = 'background:#22c55e20;color:#22c55e;border:1px solid #22c55e40;font-size:11px;padding:4px 8px;margin-left:6px';
-      } else if (item.complexity === 'risky') {
-        complexityBadge.style.cssText = 'background:#f9758320;color:#f97583;border:1px solid #f9758340;font-size:11px;padding:4px 8px;margin-left:6px';
-      } else {
-        complexityBadge.style.cssText = 'background:#f59e0b20;color:#f59e0b;border:1px solid #f59e0b40;font-size:11px;padding:4px 8px;margin-left:6px';
-      }
-    }
-
-    // Create content wrapper for badges, reasoning, and conflict warning
-    var contentWrap = document.createElement('div');
-    contentWrap.style.cssText = 'flex:1;display:flex;flex-direction:column;gap:8px';
-
-    var badgeRow = document.createElement('div');
-    badgeRow.style.display = 'flex';
-    badgeRow.style.alignItems = 'center';
-    badgeRow.appendChild(badge);
-    if (complexityBadge) badgeRow.appendChild(complexityBadge);
-
-    var reasoning = document.createElement('div');
-    reasoning.style.cssText = 'font-size:13px;color:var(--text);line-height:1.5';
-    reasoning.textContent = item.reasoning || item.note;
-
-    contentWrap.appendChild(badgeRow);
-    contentWrap.appendChild(reasoning);
-
-    // Add conflict warning if applicable
-    if (item.has_conflict) {
-      var warning = document.createElement('div');
-      warning.style.cssText = 'font-size:12px;color:#f59e0b;background:#f59e0b10;padding:6px 10px;border-left:3px solid #f59e0b;border-radius:4px';
-      warning.innerHTML = '⚠️ <strong>Conflict:</strong> Another pending request also modifies Level ' + item.level_number + '. These requests may conflict when applied together.';
-      contentWrap.appendChild(warning);
-    }
-
-    var deleteBtn = document.createElement('button');
-    deleteBtn.className = 've-small-btn';
-    deleteBtn.textContent = '❌';
-    deleteBtn.style.cssText = 'font-size:14px;padding:6px 12px;background:#f9758320;border-color:#f97583;color:#f97583';
-    deleteBtn.onclick = function() { veDeletePendingChange(item.id); };
-
-    li.appendChild(contentWrap);
-    li.appendChild(deleteBtn);
-    list.appendChild(li);
+    var card = veCreateRequestCard(item, true); // true = show delete button
+    list.appendChild(card);
   });
 }
 
@@ -3932,57 +4057,13 @@ function veRenderApplied() {
     buildHeader.innerHTML = '<span>📦 ' + build.run_name + '</span><span style="font-size:10px;color:var(--muted);font-weight:400;margin-left:auto">' + build.changes.length + ' change(s)</span>';
     container.appendChild(buildHeader);
 
-    // Changes in this build
+    // Changes in this build (use same card design as pending)
     var list = document.createElement('ul');
     list.className = 've-history';
     list.style.marginBottom = '16px';
     build.changes.forEach(function(item) {
-      var li = document.createElement('li');
-      li.style.flexWrap = 'wrap';
-
-      // Thumbnails
-      if (item.clean || item.marked) {
-        var thumbRow = document.createElement('div');
-        thumbRow.style.cssText = 'display:flex;gap:6px;align-items:flex-end;margin-right:8px';
-
-        if (item.clean) {
-          var wrap1 = document.createElement('div');
-          wrap1.style.cssText = 'text-align:center';
-          var lbl1 = document.createElement('div');
-          lbl1.style.cssText = 'font-size:10px;color:var(--muted);margin-bottom:2px';
-          lbl1.textContent = 'Original';
-          var img1 = document.createElement('img');
-          img1.src = 'data:image/png;base64,' + item.clean;
-          img1.className = 've-thumb';
-          wrap1.appendChild(lbl1); wrap1.appendChild(img1);
-          thumbRow.appendChild(wrap1);
-        }
-
-        if (item.marked) {
-          var wrap2 = document.createElement('div');
-          wrap2.style.cssText = 'text-align:center';
-          var lbl2 = document.createElement('div');
-          lbl2.style.cssText = 'font-size:10px;color:#6366f1;font-weight:600;margin-bottom:2px';
-          lbl2.textContent = '✏ Analyzed';
-          var img2 = document.createElement('img');
-          img2.src = 'data:image/png;base64,' + item.marked;
-          img2.className = 've-thumb';
-          img2.style.border = '2px solid #6366f1';
-          wrap2.appendChild(lbl2); wrap2.appendChild(img2);
-          thumbRow.appendChild(wrap2);
-        }
-
-        li.appendChild(thumbRow);
-      }
-
-      var badge = document.createElement('span');
-      badge.className = 've-badge ' + item.type;
-      badge.textContent = 'Path ' + item.type;
-      var note = document.createElement('span');
-      note.className = 've-status';
-      note.textContent = item.note;
-      li.appendChild(badge); li.appendChild(note);
-      list.appendChild(li);
+      var card = veCreateRequestCard(item, false); // false = no delete button
+      list.appendChild(card);
     });
     container.appendChild(list);
   });
