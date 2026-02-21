@@ -620,6 +620,7 @@
             <!-- Upload button -->
             <div style="margin-top:10px; display:flex; gap:8px; align-items:center">
               <button class="ve-small-btn primary" onclick="veShowImageUpload()">+ Upload Image</button>
+              <button class="ve-small-btn" onclick="veShowLibrary()">📁 Show Library</button>
               <button class="ve-small-btn" onclick="veClearAllImages()" style="background:var(--danger); color:#fff">Clear All</button>
               <input type="file" id="ve-a-file-input" accept="image/*" style="display:none" onchange="veHandleImageUpload(this)">
             </div>
@@ -749,9 +750,30 @@
           <textarea id="ve-c-prompt" style="width:100%;height:80px;resize:vertical;padding:8px;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:var(--radius);font-size:13px;box-sizing:border-box"
             placeholder="E.g. 'Make it a red velvet table instead of green felt' or 'Change the card back to gold floral art deco'"></textarea>
           <div style="margin-top:8px; display:flex; gap:8px; align-items:center">
-            <button class="ve-small-btn primary" id="ve-c-gen-btn" onclick="veEditAsset()">Generate Preview</button>
+            <button class="ve-small-btn primary" id="ve-c-improve-btn" onclick="veImprovePathC()">✨ Improve My Prompt</button>
+            <button class="ve-small-btn" id="ve-c-use-btn" onclick="veUsePathCPrompt()">Use This Prompt</button>
           </div>
           <div id="ve-c-gen-status" class="ve-note" style="margin-top:6px"></div>
+
+          <!-- Reference Images Gallery (shared state, rendered by JS) -->
+          <div style="margin-top:20px">
+            <div class="ve-label">Reference Images (Optional)</div>
+            <p class="ve-note" style="margin-top:4px; margin-bottom:10px; font-size:11px">
+              Click any image to make it ACTIVE. Reference images with @Image01, @Image02, etc. in your prompt above.
+            </p>
+
+            <!-- Gallery container for Path C (uses same rendering function as Path A) -->
+            <div id="ve-c-gallery-display" style="min-height:180px">
+              <!-- Rendered by veRenderImageGallery() -->
+            </div>
+
+            <!-- Upload buttons -->
+            <div style="margin-top:10px; display:flex; gap:8px; align-items:center">
+              <button class="ve-small-btn primary" onclick="veShowImageUpload()">+ Upload Image</button>
+              <button class="ve-small-btn" onclick="veShowLibrary()">📁 Show Library</button>
+              <button class="ve-small-btn" onclick="veClearAllImages()" style="background:var(--danger); color:#fff">Clear All</button>
+            </div>
+          </div>
         </div>
 
         <!-- C Step 3 — Before / After preview + approve (shown after generation) -->
@@ -883,8 +905,11 @@
     <!-- Status -->
     <div id="ve-nano-status" class="ve-note" style="margin-bottom:12px; min-height:20px"></div>
 
-    <!-- Generate Button -->
-    <button class="ve-apply-btn" id="ve-nano-generate-btn" onclick="veSubmitNanoBananaEdit()">✨ Generate Modified Image</button>
+    <!-- Generate Buttons -->
+    <div style="display:flex; gap:10px">
+      <button class="ve-small-btn primary" id="ve-nano-improve-btn" onclick="veImproveNanoBanana()">✨ Improve My Prompt</button>
+      <button class="ve-small-btn" id="ve-nano-use-btn" onclick="veUseNanoBananaPrompt()">Use This Prompt</button>
+    </div>
   </div>
 </div>
 
@@ -2540,8 +2565,18 @@ function veRemoveImage(imageId) {
   veRenderImageGallery();
 }
 
+function veShowLibrary() {
+  // Show the gallery even if no images have been uploaded in this session
+  if (vePathAImages.length > 0) {
+    vePathAGalleryVisible = true;
+    veRenderImageGallery();
+  } else {
+    alert('No images in library yet. Upload or capture an image first.');
+  }
+}
+
 function veClearAllImages() {
-  if (!confirm('Delete ALL reference images?\n\nThis will permanently delete all images from disk and reset the gallery.')) {
+  if (!confirm('Are you sure you want to delete all reference images for this project?\n\nThis will permanently delete all images from disk.')) {
     return;
   }
 
@@ -2748,10 +2783,11 @@ function veCancelNanoBanana() {
   veNanoBananaImageId = null;
 }
 
-function veSubmitNanoBananaEdit() {
+// Nano Banana - Improve prompt
+function veImproveNanoBanana() {
   var prompt = document.getElementById('ve-nano-prompt').value.trim();
   if (!prompt) {
-    alert('Please describe what you want to change');
+    document.getElementById('ve-nano-status').textContent = 'Write a description first.';
     return;
   }
 
@@ -2759,21 +2795,103 @@ function veSubmitNanoBananaEdit() {
   var img = vePathAImages.find(function(i) { return i.id === veNanoBananaImageId; });
   if (!img) return;
 
-  var statusEl = document.getElementById('ve-nano-status');
-  var generateBtn = document.getElementById('ve-nano-generate-btn');
+  var improveBtn = document.getElementById('ve-nano-improve-btn');
+  var useBtn = document.getElementById('ve-nano-use-btn');
+  var status = document.getElementById('ve-nano-status');
+  var promptField = document.getElementById('ve-nano-prompt');
 
-  statusEl.textContent = '✨ Generating modified image...';
-  statusEl.style.color = 'var(--primary)';
-  generateBtn.disabled = true;
-  generateBtn.textContent = 'Generating...';
+  improveBtn.disabled = true;
+  useBtn.disabled = true;
+  status.textContent = '✨ Claude is improving your prompt...';
+  status.style.color = 'var(--primary)';
+
+  fetch('/api/nanobanana/enhance-prompt', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      rough_prompt: prompt,
+      screenshot: img.dataUrl
+    })
+  })
+  .then(function(res) { return res.ok ? res.json() : res.json().then(function(e) { throw new Error(e.detail); }); })
+  .then(function(data) {
+    var suggestions = data.suggestions || [];
+    if (suggestions.length > 0) {
+      // Use the first suggestion
+      promptField.value = suggestions[0];
+      status.textContent = '✓ Prompt improved! Click "Use This Prompt" to generate.';
+      status.style.color = 'var(--success)';
+    } else {
+      throw new Error('No suggestions returned');
+    }
+  })
+  .catch(function(err) {
+    status.textContent = '❌ Error: ' + err.message;
+    status.style.color = 'var(--danger)';
+  })
+  .finally(function() {
+    improveBtn.disabled = false;
+    useBtn.disabled = false;
+  });
+}
+
+// Nano Banana - Use prompt and generate
+function veUseNanoBananaPrompt() {
+  veSubmitNanoBananaEdit();
+}
+
+function veSubmitNanoBananaEdit() {
+  var prompt = document.getElementById('ve-nano-prompt').value.trim();
+  if (!prompt) {
+    alert('Please describe what you want to change');
+    return;
+  }
+
+  // Find the source image BEFORE closing modal
+  var img = vePathAImages.find(function(i) { return i.id === veNanoBananaImageId; });
+  if (!img) return;
+
+  // Store references before closing modal
+  var sourceImageDataUrl = img.dataUrl;
+  var promptText = prompt;
+
+  // Close modal immediately
+  veCancelNanoBanana();
+
+  // Add loading placeholder to gallery (using encodeURIComponent instead of btoa for Unicode support)
+  var loadingSvg = '<svg xmlns="http://www.w3.org/2000/svg" width="400" height="300" viewBox="0 0 400 300">' +
+    '<rect width="400" height="300" fill="#1a1b26"/>' +
+    '<text x="200" y="130" font-family="Arial" font-size="18" fill="#6366f1" text-anchor="middle">Generating...</text>' +
+    '<text x="200" y="160" font-family="Arial" font-size="14" fill="#9ca3af" text-anchor="middle">AI is modifying your image</text>' +
+    '<circle cx="200" cy="200" r="20" fill="none" stroke="#6366f1" stroke-width="3">' +
+    '<animateTransform attributeName="transform" type="rotate" from="0 200 200" to="360 200 200" dur="1s" repeatCount="indefinite"/>' +
+    '</circle>' +
+    '</svg>';
+  var loadingPlaceholder = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(loadingSvg);
+
+  // Add placeholder and get its ID
+  veImageCounter++;
+  var placeholderId = veImageCounter;
+  var imageNum = String(veImageCounter).padStart(2, '0');
+  var imageName = 'Image ' + imageNum;
+
+  vePathAImages.push({
+    id: placeholderId,
+    dataUrl: loadingPlaceholder,
+    name: imageName
+  });
+
+  veActiveImageId = placeholderId;
+  vePathAGalleryVisible = true;
+  veRenderImageGallery();
 
   // Call Nano Banana API
   fetch('/api/nanobanana/generate', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      prompt: prompt,
-      reference_image: img.dataUrl,
+      prompt: promptText,
+      reference_image: sourceImageDataUrl,
       num_variations: 1
     })
   })
@@ -2786,36 +2904,41 @@ function veSubmitNanoBananaEdit() {
     return res.json();
   })
   .then(function(data) {
-    statusEl.textContent = '✅ Generated! Adding to gallery...';
-    statusEl.style.color = 'var(--success)';
-
-    // Add to gallery as new image (API returns {images: [raw base64, ...]})
+    // Replace placeholder with actual image
     var newImageData = data.images && data.images[0];
     if (newImageData) {
       // Convert raw base64 to data URL if needed
       if (!newImageData.startsWith('data:')) {
         newImageData = 'data:image/png;base64,' + newImageData;
       }
-      veAddImageToGallery(newImageData);
+
+      // Find and replace the placeholder
+      var placeholderIndex = vePathAImages.findIndex(function(i) { return i.id === placeholderId; });
+      if (placeholderIndex !== -1) {
+        vePathAImages[placeholderIndex].dataUrl = newImageData;
+        veSaveImageToDisk(newImageData, placeholderId);
+      }
+      veRenderImageGallery();
     } else {
       throw new Error('No image data returned from API');
     }
 
-    // Close modal after brief delay
-    setTimeout(function() {
-      veCancelNanoBanana();
-      statusEl.textContent = '';
-      generateBtn.disabled = false;
-      generateBtn.textContent = '✨ Generate Modified Image';
-    }, 1500);
-
-    console.log('Nano Banana generated new image from prompt:', prompt);
+    console.log('Nano Banana generated new image from prompt:', promptText);
   })
   .catch(function(err) {
-    statusEl.textContent = '❌ Error: ' + err.message;
-    statusEl.style.color = 'var(--danger)';
-    generateBtn.disabled = false;
-    generateBtn.textContent = '✨ Generate Modified Image';
+    // Replace placeholder with error image
+    var errorSvg = '<svg xmlns="http://www.w3.org/2000/svg" width="400" height="300" viewBox="0 0 400 300">' +
+      '<rect width="400" height="300" fill="#1a1b26"/>' +
+      '<text x="200" y="140" font-family="Arial" font-size="18" fill="#ef4444" text-anchor="middle">Error</text>' +
+      '<text x="200" y="170" font-family="Arial" font-size="12" fill="#9ca3af" text-anchor="middle">' + err.message + '</text>' +
+      '</svg>';
+    var errorPlaceholder = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(errorSvg);
+
+    var placeholderIndex = vePathAImages.findIndex(function(i) { return i.id === placeholderId; });
+    if (placeholderIndex !== -1) {
+      vePathAImages[placeholderIndex].dataUrl = errorPlaceholder;
+    }
+    veRenderImageGallery();
     console.error('Nano Banana error:', err);
   });
 }
@@ -2823,25 +2946,72 @@ function veSubmitNanoBananaEdit() {
 function veRenderImageGallery() {
   var gallery = document.getElementById('ve-a-gallery');
   var emptyState = document.getElementById('ve-a-gallery-empty');
-  if (!gallery || !emptyState) return;
+  var pathCDisplay = document.getElementById('ve-c-gallery-display');
 
-  gallery.innerHTML = '';
+  // Render in Path A location
+  if (gallery && emptyState) {
+    gallery.innerHTML = '';
 
-  // Toggle between empty state and gallery based on visibility flag
-  // (gallery is hidden until user explicitly uploads/captures/drags an image)
-  if (!vePathAGalleryVisible || vePathAImages.length === 0) {
-    emptyState.style.display = 'flex';
-    gallery.style.display = 'none';
-    return;
-  } else {
-    emptyState.style.display = 'none';
-    gallery.style.display = 'flex';
+    // Toggle between empty state and gallery based on visibility flag
+    if (!vePathAGalleryVisible || vePathAImages.length === 0) {
+      emptyState.style.display = 'flex';
+      gallery.style.display = 'none';
+    } else {
+      emptyState.style.display = 'none';
+      gallery.style.display = 'flex';
+    }
   }
 
-  vePathAImages.forEach(function(img, index) {
-    var isActive = (img.id === veActiveImageId);
+  // Also render in Path C location if it exists
+  if (pathCDisplay) {
+    pathCDisplay.innerHTML = '';
+    if (!vePathAGalleryVisible || vePathAImages.length === 0) {
+      // Show empty state in Path C
+      pathCDisplay.innerHTML = '<div style="display:flex; align-items:center; justify-content:center; min-height:180px; border:2px dashed var(--border); border-radius:var(--radius); background:var(--surface); cursor:pointer" onclick="veShowImageUpload()">' +
+        '<div style="text-align:center; color:var(--muted); padding:20px">' +
+        '<div style="font-size:40px; margin-bottom:10px">📁</div>' +
+        '<div style="font-size:14px; font-weight:600; margin-bottom:6px">No reference images yet</div>' +
+        '<div style="font-size:12px">Click "Upload Image" or "Show Library" to add images</div>' +
+        '</div></div>';
+      return;
+    } else {
+      // Show gallery in Path C
+      var pathCGallery = document.createElement('div');
+      pathCGallery.style.cssText = 'display:flex; gap:12px; overflow-x:auto; padding:10px 0; min-height:180px; align-items:flex-start; border:2px dashed var(--border); border-radius:var(--radius)';
+      pathCDisplay.appendChild(pathCGallery);
 
-    var card = document.createElement('div');
+      // Render images into Path C gallery
+      vePathAImages.forEach(function(img) {
+        var card = veCreateImageCard(img);
+        pathCGallery.appendChild(card);
+      });
+
+      // Auto-scroll Path C gallery too
+      setTimeout(function() {
+        pathCGallery.scrollLeft = pathCGallery.scrollWidth;
+      }, 0);
+    }
+  }
+
+  // Render into Path A gallery if visible
+  if (!gallery || !vePathAGalleryVisible || vePathAImages.length === 0) return;
+
+  vePathAImages.forEach(function(img, index) {
+    var card = veCreateImageCard(img);
+    gallery.appendChild(card);
+  });
+
+  // Auto-scroll to the right (newest image)
+  setTimeout(function() {
+    gallery.scrollLeft = gallery.scrollWidth;
+  }, 0);
+}
+
+// Create an image card (reusable for both Path A and Path C)
+function veCreateImageCard(img) {
+  var isActive = (img.id === veActiveImageId);
+
+  var card = document.createElement('div');
     card.style.cssText = 'position:relative; flex-shrink:0; width:120px; padding:8px; border:2px solid ' +
       (isActive ? '#6366f1' : 'var(--border)') +
       '; border-radius:var(--radius); background:var(--surface)' +
@@ -2916,13 +3086,7 @@ function veRenderImageGallery() {
       card.appendChild(badge);
     }
 
-    gallery.appendChild(card);
-  });
-
-  // Auto-scroll to the right (newest image)
-  setTimeout(function() {
-    gallery.scrollLeft = gallery.scrollWidth;
-  }, 0);
+    return card;
 }
 
 // Drag & Drop handlers for image gallery (works for both empty state and gallery)
@@ -3227,16 +3391,91 @@ function vePickEditAsset(name, cardEl) {
   document.getElementById('ve-c-prompt').focus();
 }
 
+// Path C - Improve prompt workflow
+function veImprovePathC() {
+  var prompt = document.getElementById('ve-c-prompt').value.trim();
+  if (!prompt) {
+    document.getElementById('ve-c-gen-status').textContent = 'Write a description first.';
+    return;
+  }
+
+  if (!veEditAssetName) {
+    document.getElementById('ve-c-gen-status').textContent = 'Select an asset first.';
+    return;
+  }
+
+  var improveBtn = document.getElementById('ve-c-improve-btn');
+  var useBtn = document.getElementById('ve-c-use-btn');
+  var status = document.getElementById('ve-c-gen-status');
+  var promptField = document.getElementById('ve-c-prompt');
+
+  improveBtn.disabled = true;
+  useBtn.disabled = true;
+  status.textContent = '✨ Claude is improving your prompt...';
+  status.style.color = 'var(--primary)';
+
+  // Get the current asset image as screenshot
+  fetch('/api/assets/list')
+    .then(function(res) { return res.json(); })
+    .then(function(data) {
+      var assets = data.assets || [];
+      var asset = assets.find(function(a) { return a.name === veEditAssetName; });
+      if (!asset || !asset.preview) {
+        throw new Error('Asset image not found');
+      }
+
+      var assetImageB64 = 'data:image/png;base64,' + asset.preview;
+
+      // Call enhance-prompt
+      return fetch('/api/nanobanana/enhance-prompt', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          rough_prompt: prompt,
+          screenshot: assetImageB64
+        })
+      });
+    })
+    .then(function(res) { return res.ok ? res.json() : res.json().then(function(e) { throw new Error(e.detail); }); })
+    .then(function(data) {
+      var suggestions = data.suggestions || [];
+      if (suggestions.length > 0) {
+        // Use the first suggestion
+        promptField.value = suggestions[0];
+        status.textContent = '✓ Prompt improved! Click "Use This Prompt" to generate.';
+        status.style.color = 'var(--success)';
+      } else {
+        throw new Error('No suggestions returned');
+      }
+    })
+    .catch(function(err) {
+      status.textContent = '❌ Error: ' + err.message;
+      status.style.color = 'var(--danger)';
+    })
+    .finally(function() {
+      improveBtn.disabled = false;
+      useBtn.disabled = false;
+    });
+}
+
+function veUsePathCPrompt() {
+  veEditAsset();
+}
+
 function veEditAsset() {
-  var btn    = document.getElementById('ve-c-gen-btn');
+  var btn    = document.getElementById('ve-c-improve-btn');
+  var useBtn = document.getElementById('ve-c-use-btn');
   var status = document.getElementById('ve-c-gen-status');
   var prompt = document.getElementById('ve-c-prompt').value.trim();
   if (!veEditAssetName) { status.textContent = 'Select an asset first.'; return; }
   if (!prompt)          { status.textContent = 'Write a description of the change.'; return; }
 
   btn.disabled    = true;
+  useBtn.disabled = true;
   btn.textContent = 'Generating...';
+  useBtn.textContent = 'Generating...';
   status.textContent = 'Sending to Gemini...';
+  status.style.color = '';
   document.getElementById('ve-c-preview-section').style.display = 'none';
 
   fetch('/api/assets/edit-preview', {
@@ -3267,10 +3506,13 @@ function veEditAsset() {
   })
   .catch(function(err) {
     status.textContent = 'Error: ' + err.message;
+    status.style.color = 'var(--danger)';
   })
   .finally(function() {
     btn.disabled    = false;
-    btn.textContent = 'Generate Preview';
+    useBtn.disabled = false;
+    btn.textContent = '✨ Improve My Prompt';
+    useBtn.textContent = 'Use This Prompt';
   });
 }
 
