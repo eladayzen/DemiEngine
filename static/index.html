@@ -43,6 +43,13 @@
     .preview-placeholder { position: absolute; inset: 0; display: flex; align-items: center;
       justify-content: center; flex-direction: column; gap: 10px; color: var(--muted);
       font-size: 13px; }
+    .build-loading-overlay { position: absolute; inset: 0; background: rgba(0, 0, 0, 0.85);
+      display: none; align-items: center; justify-content: center; flex-direction: column;
+      gap: 20px; color: #fff; font-size: 14px; z-index: 100; }
+    .build-loading-overlay.active { display: flex; }
+    .build-spinner { width: 50px; height: 50px; border: 4px solid rgba(255, 255, 255, 0.2);
+      border-top-color: #fff; border-radius: 50%; animation: spin 1s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
 
     /* ── Workspace (right 2/3) ────────────────────────────── */
     .workspace { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
@@ -237,6 +244,10 @@
         <div style="font-size:40px; opacity:0.3">🎮</div>
         <div>No build loaded</div>
         <div style="font-size:11px; margin-top:8px">Click "Generate Ad" to preview</div>
+      </div>
+      <div class="build-loading-overlay" id="build-loading-overlay">
+        <div class="build-spinner"></div>
+        <div>Building...</div>
       </div>
     </div>
   </div>
@@ -1532,11 +1543,13 @@ function onGenerate() {
   var btn     = document.getElementById('generate-btn');
   var errEl   = document.getElementById('error-msg');
   var resultEl = document.getElementById('result-area');
+  var loadingOverlay = document.getElementById('build-loading-overlay');
 
   btn.disabled        = true;
   btn.textContent     = 'Building...';
   errEl.textContent   = '';
   resultEl.classList.remove('visible');
+  loadingOverlay.classList.add('active');
 
   var config = buildConfig();
 
@@ -1631,6 +1644,7 @@ function onGenerate() {
   .finally(function() {
     btn.disabled    = false;
     btn.textContent = 'Generate Ad';
+    loadingOverlay.classList.remove('active');
   });
 }
 

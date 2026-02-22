@@ -1839,3 +1839,26 @@ levels.1.enter_animation
 2026-02-22 15:07:50  INFO     Smart build: Rearranged Level 1 tableau cards into upward-pointing triangle shape: 10C at the peak (col 1, row 0), with 8C and 9D forming the base (col 0 and col 2, both at row 1). Foundation card remains 7H.
 2026-02-22 15:07:50  INFO     Embedded project assets into build: {'background': 'background.png', 'card_back': 'card_back.png', 'felt': 'felt.png', 'suit_spade': 'suit_spade.png', 'suit_heart': 'suit_heart.png', 'suit_diamond': 'suit_diamond.png', 'suit_club': 'suit_club.png'}
 2026-02-22 15:07:50  INFO     Smart build complete → build_20260222_150750
+2026-02-22 15:11:15  INFO     Saved reference image: image_012.png
+2026-02-22 15:12:38  INFO     POST /api/visual/layout — category=animation, level=None, has_drawing=False, annotations=False, nanobanana_ref=False, ref_images=1, note='add much more particles on match complete expirience — optim'
+2026-02-22 15:12:56  INFO     HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2026-02-22 15:12:56  INFO     Config changes OK — category=animation, section=visual
+2026-02-22 15:13:07  INFO     POST /api/build-with-requests — 1 pending requests
+2026-02-22 15:13:28  INFO     HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2026-02-22 15:13:28  INFO     Smart build: Added comprehensive particle effects system to visual.json for match complete celebrations. Implemented three particle types (confetti with 50 particles, sparkles with 30 particles, and stars with 20 particles) totaling 100 particles. Each type has customized properties including multiple colors, size ranges, velocities, gravity, rotation speeds, and fade-out effects. Added screen shake, card highlight glow, and extended animation duration to 1500ms for a more satisfying celebration experience while keeping cards visible and layout clean.
+2026-02-22 15:13:28  INFO     Embedded project assets into build: {'background': 'background.png', 'card_back': 'card_back.png', 'felt': 'felt.png', 'suit_spade': 'suit_spade.png', 'suit_heart': 'suit_heart.png', 'suit_diamond': 'suit_diamond.png', 'suit_club': 'suit_club.png'}
+2026-02-22 15:13:28  INFO     Smart build complete → build_20260222_151328
+2026-02-22 15:13:42  INFO     Listed 1 reference images
+2026-02-22 15:13:45  INFO     POST /api/generate — validating configs
+2026-02-22 15:13:45  INFO     Embedded project assets into build: {'background': 'background.png', 'card_back': 'card_back.png', 'felt': 'felt.png', 'suit_spade': 'suit_spade.png', 'suit_heart': 'suit_heart.png', 'suit_diamond': 'suit_diamond.png', 'suit_club': 'suit_club.png'}
+2026-02-22 15:13:45  INFO     Build complete → build_20260222_151345  (bg_image=False, card_back_image=False, felt_image=False)
+2026-02-22 15:13:49  INFO     assets/list — returning 7 slots
+2026-02-22 15:14:00  INFO     Saved reference image: image_013.png
+2026-02-22 15:14:21  INFO     POST /api/visual/layout — category=level_design, level=1, has_drawing=False, annotations=False, nanobanana_ref=False, ref_images=1, note='remove the 6 hearts card, leave only 3 4 and 5 in the tablea'
+2026-02-22 15:14:28  INFO     HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2026-02-22 15:14:28  INFO     visual/layout OK — category=level_design, level=1, foundation=2H, 3 tableau cards
+2026-02-22 15:14:39  INFO     POST /api/build-with-requests — 1 pending requests
+2026-02-22 15:14:51  INFO     HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2026-02-22 15:14:51  INFO     Smart build: Level 1: Removed the fourth tableau card (6♥), leaving only 3♠, 4♦, and 5♣. Level remains solvable with sequential plays from foundation 2♥ → 3 → 4 → 5.
+2026-02-22 15:14:51  INFO     Embedded project assets into build: {'background': 'background.png', 'card_back': 'card_back.png', 'felt': 'felt.png', 'suit_spade': 'suit_spade.png', 'suit_heart': 'suit_heart.png', 'suit_diamond': 'suit_diamond.png', 'suit_club': 'suit_club.png'}
+2026-02-22 15:14:51  INFO     Smart build complete → build_20260222_151451
