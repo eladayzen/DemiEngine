@@ -173,12 +173,19 @@ gameContainer.addChild(overlayContainer);
 let _bgSprite   = null;
 let _feltSprite = null;
 let _cardBackTexture = null;
+let _suitTextures = { H: null, D: null, C: null, S: null };
 
 function _loadImageAssets() {
   const V = CONFIG.visual;
   if (V.card_back_image) {
     _cardBackTexture = PIXI.Texture.from('data:image/png;base64,' + V.card_back_image);
   }
+
+  // Load suit icon PNGs (if available in config)
+  if (V.suit_heart_image)   _suitTextures.H = PIXI.Texture.from('data:image/png;base64,' + V.suit_heart_image);
+  if (V.suit_diamond_image) _suitTextures.D = PIXI.Texture.from('data:image/png;base64,' + V.suit_diamond_image);
+  if (V.suit_club_image)    _suitTextures.C = PIXI.Texture.from('data:image/png;base64,' + V.suit_club_image);
+  if (V.suit_spade_image)   _suitTextures.S = PIXI.Texture.from('data:image/png;base64,' + V.suit_spade_image);
 }
 
 // ============================================================
@@ -237,29 +244,65 @@ const PIP_POSITIONS = {
 };
 const PIP_X0 = 10, PIP_W = 50, PIP_Y0 = 22, PIP_H = 52;
 
+// Helper: Create suit sprite or fallback to text
+function createSuitElement(suit, size = 12) {
+  const texture = _suitTextures[suit];
+  if (texture) {
+    // Use SVG sprite
+    const sprite = new PIXI.Sprite(texture);
+    sprite.width = size;
+    sprite.height = size;
+    sprite.anchor.set(0, 0);
+    return sprite;
+  } else {
+    // Fallback to text symbol
+    const color = (suit === 'H' || suit === 'D') ? 0xcc2222 : 0x111111;
+    const text = new PIXI.Text(SUITS[suit], {
+      fontFamily: 'Arial',
+      fontWeight: 'bold',
+      fontSize: size,
+      fill: color
+    });
+    return text;
+  }
+}
+
 function addFaceTexts(container, info) {
   const color = info.isRed ? 0xcc2222 : 0x111111;
   const base  = { fontFamily: 'Arial', fontWeight: 'bold', fill: color };
 
-  // Top-left corner
-  const tl = new PIXI.Text(info.value + '\n' + info.symbol, { ...base, fontSize: 11, lineHeight: 13 });
-  tl.x = 4; tl.y = 3;
-  container.addChild(tl);
+  // Top-left corner: value + suit icon
+  const tlValue = new PIXI.Text(info.value, { ...base, fontSize: 11 });
+  tlValue.x = 4; tlValue.y = 3;
+  container.addChild(tlValue);
 
-  // Bottom-right corner — rotated container avoids overflow
+  const tlSuit = createSuitElement(info.suit, 11);
+  tlSuit.x = 4; tlSuit.y = 16;
+  container.addChild(tlSuit);
+
+  // Bottom-right corner: value + suit icon (rotated)
   const brCont = new PIXI.Container();
   brCont.x = CARD_W; brCont.y = CARD_H; brCont.rotation = Math.PI;
-  const br = new PIXI.Text(info.value + '\n' + info.symbol, { ...base, fontSize: 11, lineHeight: 13 });
-  br.x = 4; br.y = 3;
-  brCont.addChild(br); container.addChild(brCont);
+
+  const brValue = new PIXI.Text(info.value, { ...base, fontSize: 11 });
+  brValue.x = 4; brValue.y = 3;
+  brCont.addChild(brValue);
+
+  const brSuit = createSuitElement(info.suit, 11);
+  brSuit.x = 4; brSuit.y = 16;
+  brCont.addChild(brSuit);
+
+  container.addChild(brCont);
 
   // Center pips or face letter
   if (PIP_POSITIONS[info.value]) {
     const pips = PIP_POSITIONS[info.value];
     const sz = pips.length <= 2 ? 15 : pips.length <= 4 ? 13 : pips.length <= 6 ? 12 : 10;
     for (const [nx, ny] of pips) {
-      const pip = new PIXI.Text(info.symbol, { ...base, fontSize: sz });
-      pip.anchor.set(0.5); pip.x = PIP_X0 + nx * PIP_W; pip.y = PIP_Y0 + ny * PIP_H;
+      const pip = createSuitElement(info.suit, sz);
+      pip.anchor.set(0.5, 0.5);
+      pip.x = PIP_X0 + nx * PIP_W;
+      pip.y = PIP_Y0 + ny * PIP_H;
       container.addChild(pip);
     }
   } else {

@@ -53,9 +53,13 @@ HISTORY_DIR  = STATIC_DIR / "assets" / "history"
 
 # Asset slots — these are the swappable image files
 ASSET_SLOTS = [
-    {"name": "background", "description": "Full background image",       "size": (390, 844)},
-    {"name": "card_back",  "description": "Card back face (face-down)",  "size": (60,  84)},
-    {"name": "felt",       "description": "Table surface / felt texture", "size": (366, 560)},
+    {"name": "background",   "description": "Full background image",       "size": (390, 844)},
+    {"name": "card_back",    "description": "Card back face (face-down)",  "size": (60,  84)},
+    {"name": "felt",         "description": "Table surface / felt texture", "size": (366, 560)},
+    {"name": "suit_spade",   "description": "Spade suit icon ♠",           "size": (100, 100)},
+    {"name": "suit_heart",   "description": "Heart suit icon ♥",           "size": (100, 100)},
+    {"name": "suit_diamond", "description": "Diamond suit icon ♦",         "size": (100, 100)},
+    {"name": "suit_club",    "description": "Club suit icon ♣",            "size": (100, 100)},
 ]
 ASSET_SLOT_NAMES = {s["name"] for s in ASSET_SLOTS}
 
@@ -561,6 +565,30 @@ IMPORTANT RULES:
 Use the update_game_configs tool to return all three updated configuration objects.
 """
 
+APPLY_CONFIG_CHANGES_TOOL = {
+    "name": "apply_config_changes",
+    "description": "Return the updated configuration section after applying the requested changes.",
+    "input_schema": {
+        "type": "object",
+        "properties": {
+            "config_section": {
+                "type": "string",
+                "description": "Which config to update: 'mechanics', 'visual', or 'levels'",
+                "enum": ["mechanics", "visual", "levels"]
+            },
+            "updated_config": {
+                "type": "object",
+                "description": "The complete updated configuration object with your changes applied"
+            },
+            "changes_summary": {
+                "type": "string",
+                "description": "Brief 1-2 sentence summary of what you changed"
+            }
+        },
+        "required": ["config_section", "updated_config", "changes_summary"]
+    }
+}
+
 UPDATE_CONFIGS_TOOL = {
     "name": "update_game_configs",
     "description": "Return the updated game configuration objects after applying all pending requests.",
@@ -845,15 +873,15 @@ GAME RULES (current):
 YOUR TASK:
 The operator wants to modify CORE GAME MECHANICS that affect ALL levels.
 
-Read the request carefully and explain:
-1. What specific rule/mechanic they want to change
-2. How this affects gameplay across all levels
-3. What implementation changes are needed (specific config fields to modify)
-4. Any gameplay implications or balance concerns
+1. Read the CURRENT MECHANICS CONFIG provided
+2. Identify what changes the operator is requesting
+3. Modify the config object to implement the changes
+4. Use the apply_config_changes tool to return:
+   - config_section: "mechanics"
+   - updated_config: the complete mechanics object with your changes
+   - changes_summary: brief explanation of what you changed
 
-Be specific about which config fields need to change (e.g., "Set mechanics.allow_suit_matching to true").
-
-DO NOT use the generate_level_layout tool — this is a mechanics change, not a level layout change.
+IMPORTANT: Return the COMPLETE config object with your modifications, not just the changed fields.
 """
 
 LEVEL_DESIGN_SYSTEM = """You are a level designer for a simplified solitaire card game.
@@ -903,44 +931,50 @@ When outputting reasoning:
 
 GRAPHICS_UI_SYSTEM = """You are a UI/UX designer for a mobile card game playable ad.
 
-CURRENT VISUAL CONFIG STRUCTURE:
+VISUAL CONFIG STRUCTURE:
 - Colors: background_color, card_back_color, table_felt_color, card_border_color, foundation_border_color
 - Text: font_family, font_color, title_font_size
-- Card styling: card_border_width, card_corner_radius, card_shadow
-- UI elements: button styles, text positions
+- Card styling: card_border_width, card_corner_radius, card_shadow (with enabled, offset_x, offset_y, blur_radius, color, spread)
+- Images: background_image, card_back_image, felt_image (base64 PNG data)
+- Suit icons: suit_spade_image, suit_heart_image, suit_diamond_image, suit_club_image (base64 PNG data)
 
 YOUR TASK:
 The operator wants to modify VISUAL/UI elements that affect the ENTIRE game.
 
-Read the request and screenshot carefully, then explain:
-1. What specific visual elements they want to change
-2. Which config fields need to be updated (be specific: "visual.card_border_color")
-3. Exact values to use (colors as hex codes, sizes as pixels)
-4. Any visual hierarchy or accessibility concerns
+1. Read the CURRENT VISUAL CONFIG provided
+2. Identify what visual changes the operator is requesting
+3. Modify the config object to implement the changes (add new fields if needed)
+4. Use the apply_config_changes tool to return:
+   - config_section: "visual"
+   - updated_config: the complete visual object with your changes
+   - changes_summary: brief explanation of what you changed
 
-DO NOT use the generate_level_layout tool — this is a styling change, not a level layout change.
+IMPORTANT: Return the COMPLETE config object with your modifications, not just the changed fields.
 
-If the request involves reference images or Nanobanana outputs, describe how the visual style should be adapted.
+For shadow effects, use the card_shadow object structure with enabled/offset/blur/color/spread properties.
 """
 
 ANIMATION_SYSTEM = """You are a motion designer for a mobile card game playable ad.
 
-CURRENT ANIMATION CONFIG:
+ANIMATION CONFIG STRUCTURE (stored in visual config):
 - Card flip speed, slide timing, bounce effects
 - Particle systems (sparkles, confetti, etc.)
 - Transition easing functions
 - Visual feedback (tap ripple, success animations)
+- Animation timing: card_flip_duration, slide_duration, etc.
 
 YOUR TASK:
 The operator wants to add or modify ANIMATION/MOTION that affects the ENTIRE game.
 
-Read the request carefully and explain:
-1. What specific animation or effect they want
-2. Where it should appear (which game event triggers it)
-3. Technical approach (CSS animation, particle system, timing function)
-4. Performance implications (mobile devices have limits)
+1. Read the CURRENT VISUAL CONFIG provided (animations are stored here)
+2. Identify what animation changes the operator is requesting
+3. Modify the config object to add/update animation properties
+4. Use the apply_config_changes tool to return:
+   - config_section: "visual"
+   - updated_config: the complete visual object with your animation changes
+   - changes_summary: brief explanation of what you changed
 
-DO NOT use the generate_level_layout tool — this is an animation change, not a level layout change.
+IMPORTANT: Return the COMPLETE config object with your modifications, not just the changed fields.
 
 Focus on juice and game feel — what makes interactions satisfying.
 """
@@ -1090,6 +1124,16 @@ async def visual_layout(req: VisualLayoutRequest):  # noqa: F811
     else:
         content.append({"type": "text", "text": f"{context_text}"})
 
+    # Load current configs for non-layout categories
+    current_configs = {}
+    if req.category in ("game_design", "graphics_ui", "animation"):
+        try:
+            current_configs["mechanics"] = _load_json(DEFAULTS_DIR / "mechanics.json")
+            current_configs["visual"] = _load_json(DEFAULTS_DIR / "visual.json")
+        except Exception as e:
+            log.warning(f"Could not load current configs: {e}")
+            current_configs = {"mechanics": {}, "visual": {}}
+
     # Decide tool usage based on category
     # Build API call parameters conditionally
     api_params = {
@@ -1099,10 +1143,20 @@ async def visual_layout(req: VisualLayoutRequest):  # noqa: F811
         "messages": [{"role": "user", "content": content}]
     }
 
-    # Only add tools if needed (level_design or legacy)
+    # Add tools based on category
     if req.category in ("level_design", "legacy"):
         api_params["tools"] = [GAMEPLAY_TOOL]
         api_params["tool_choice"] = {"type": "auto"}
+    elif req.category in ("game_design", "graphics_ui", "animation"):
+        # Add config update tool and current config context
+        api_params["tools"] = [APPLY_CONFIG_CHANGES_TOOL]
+        api_params["tool_choice"] = {"type": "auto"}
+
+        # Add current config to the message so Claude knows what to modify
+        config_section = "mechanics" if req.category == "game_design" else "visual"
+        current_config = current_configs.get(config_section, {})
+        config_context = f"\n\nCURRENT {config_section.upper()} CONFIG:\n```json\n{json.dumps(current_config, indent=2)}\n```\n\nUse the apply_config_changes tool to return the updated config with your changes."
+        api_params["messages"][0]["content"].append({"type": "text", "text": config_context})
 
     try:
         response = client.messages.create(**api_params)
@@ -1111,30 +1165,39 @@ async def visual_layout(req: VisualLayoutRequest):  # noqa: F811
 
     # Extract text reasoning and tool result from Claude's response
     tool_result = None
+    config_changes = None
     reasoning_text = ""
 
     for block in response.content:
         if block.type == "text":
             reasoning_text += block.text + " "
-        elif block.type == "tool_use" and block.name == "generate_level_layout":
-            tool_result = block.input
+        elif block.type == "tool_use":
+            if block.name == "generate_level_layout":
+                tool_result = block.input
+            elif block.name == "apply_config_changes":
+                config_changes = block.input
 
-    # For non-layout categories (game_design, graphics_ui, animation), no tool result expected
+    # For non-layout categories (game_design, graphics_ui, animation), expect config changes
     if req.category in ("game_design", "graphics_ui", "animation"):
-        if not reasoning_text.strip():
-            raise HTTPException(status_code=500, detail="AI did not provide reasoning for this change.")
+        if not config_changes:
+            raise HTTPException(status_code=500, detail="AI did not return config changes. Try adding more detail to your request.")
 
         result_payload = {
             "layout": None,
             "solve_sequence": [],
+            "config_changes": {
+                "section": config_changes.get("config_section"),
+                "updated_config": config_changes.get("updated_config"),
+                "summary": config_changes.get("changes_summary", "")
+            },
             "reasoning": {
-                "simple": reasoning_text.strip(),
-                "complexity": "n/a"  # No complexity for non-layout changes
+                "simple": reasoning_text.strip() or config_changes.get("changes_summary", "Config updated"),
+                "complexity": "n/a"
             },
             "category": req.category,
             "level_number": level_number,
         }
-        log.info(f"visual/layout OK — category={req.category}, no layout (text-only response)")
+        log.info(f"Config changes OK — category={req.category}, section={config_changes.get('config_section')}")
         return result_payload
 
     # For level_design and legacy, expect tool result

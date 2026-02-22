@@ -2523,6 +2523,25 @@ function veApplyPathA() {
       } else {
         veLog('Warning: no level cards found in form — switch to Levels tab and add a level first');
       }
+    } else if (data.config_changes) {
+      // Apply config changes to form fields (game_design, graphics_ui, animation)
+      var section = data.config_changes.section;
+      var config = data.config_changes.updated_config;
+      var summary = data.config_changes.summary;
+
+      if (section === 'visual') {
+        var visualTextarea = document.getElementById('visual_config');
+        if (visualTextarea) {
+          visualTextarea.value = JSON.stringify(config, null, 2);
+          veLog('Applied visual config changes: ' + summary);
+        }
+      } else if (section === 'mechanics') {
+        var mechanicsTextarea = document.getElementById('mechanics_config');
+        if (mechanicsTextarea) {
+          mechanicsTextarea.value = JSON.stringify(config, null, 2);
+          veLog('Applied mechanics config changes: ' + summary);
+        }
+      }
     } else {
       // Non-layout category (Game Design, Graphics & UI, Animation) - no form fields to update
       veLog('Received reasoning for ' + (data.category || 'unknown') + ' category - no layout changes');
@@ -2531,6 +2550,7 @@ function veApplyPathA() {
     // Store data for approval
     window.vePathAApprovalData = {
       layout: data.layout,
+      config_changes: data.config_changes || null,
       solve_sequence: data.solve_sequence,
       reasoning: data.reasoning || {},
       category: data.category || 'legacy',
@@ -2565,7 +2585,7 @@ function veApplyPathA() {
     complexityEl.textContent = complexityText;
     complexityEl.style.cssText += complexityColor;
 
-    // 3. Technical details (only for layout categories)
+    // 3. Technical details (layout or config changes)
     var techHtml = '';
     if (layout) {
       techHtml += 'Foundation: ' + layout.foundation_card + '\n';
@@ -2578,6 +2598,20 @@ function veApplyPathA() {
       if (data.solve_sequence && data.solve_sequence.length > 0) {
         techHtml += '\nSolve sequence: ' + data.solve_sequence.join(' → ');
       }
+    } else if (data.config_changes) {
+      // Config change category - show what was changed
+      var categoryName = data.category || 'unknown';
+      var categoryLabels = {
+        'game_design': '🎮 Game Design (Global)',
+        'graphics_ui': '🎨 Graphics & UI (Global)',
+        'animation': '✨ Animation & Polish (Global)',
+        'edit_asset': '✏️ Edit Asset',
+        'legacy': '📝 Legacy'
+      };
+      techHtml += 'Category: ' + (categoryLabels[categoryName] || categoryName) + '\n';
+      techHtml += 'Config section: ' + data.config_changes.section + '\n';
+      techHtml += 'Changes: ' + data.config_changes.summary + '\n';
+      techHtml += '\nForm fields updated - review changes in the ' + (data.config_changes.section === 'visual' ? 'Visual' : 'Mechanics') + ' tab.';
     } else {
       // Non-layout category - show category info instead
       var categoryName = data.category || 'unknown';
