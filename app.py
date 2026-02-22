@@ -748,6 +748,7 @@ class ReplaceAssetsRequest(BaseModel):
 class AssetEditPreviewRequest(BaseModel):
     asset_name: str     # e.g. "background"
     prompt: str         # user's description of the desired change
+    reference_images: Optional[list[str]] = None  # @ImageXX references from the library
 
 
 class AssetApproveRequest(BaseModel):
@@ -1444,7 +1445,37 @@ async def asset_edit_preview(req: AssetEditPreviewRequest):
     from gemini import generate_images
     log.info(f"POST /api/assets/edit-preview — asset={req.asset_name}, prompt={req.prompt[:80]!r}")
 
-    results = generate_images(req.prompt, reference_image_b64=ref_b64, num_variations=1)
+    # Process additional reference images (@ImageXX references)
+    additional_refs = None
+    if req.reference_images:
+        additional_refs = []
+        for img_data in req.reference_images:
+            # Strip data URL prefix if present
+            if img_data.startswith('data:image'):
+                img_data = img_data.split(',', 1)[1]
+            additional_refs.append(img_data)
+        log.info(f"  Including {len(additional_refs)} additional reference images")
+
+    try:
+        # Only pass additional_reference_images if we have any
+        if additional_refs:
+            results = generate_images(
+                req.prompt,
+                reference_image_b64=ref_b64,
+                num_variations=1,
+                additional_reference_images=additional_refs
+            )
+        else:
+            # No additional images, use original API call
+            results = generate_images(
+                req.prompt,
+                reference_image_b64=ref_b64,
+                num_variations=1
+            )
+    except Exception as e:
+        log.error(f"Gemini API error: {e}")
+        raise HTTPException(status_code=500, detail=f"Gemini API error: {str(e)}")
+
     if not results:
         raise HTTPException(status_code=500, detail="Gemini did not return an image")
 

@@ -112,11 +112,13 @@ def generate_images(
     prompt: str,
     reference_image_b64: str | None = None,
     num_variations: int = 2,
+    additional_reference_images: list[str] | None = None,
 ) -> list[str]:
     """
     Call Gemini image generation.
     - If reference_image_b64 is provided: image-to-image edit
     - Otherwise: text-to-image
+    - additional_reference_images: optional list of base64 images for additional context
 
     Returns list of base64-encoded PNG strings.
     """
@@ -130,6 +132,13 @@ def generate_images(
         img_bytes = _b64_to_bytes(reference_image_b64)
         pil_img = PILImage.open(BytesIO(img_bytes))
         contents.append(pil_img)
+
+    # Add additional reference images (@ImageXX references)
+    if additional_reference_images:
+        for img_b64 in additional_reference_images:
+            img_bytes = _b64_to_bytes(img_b64)
+            pil_img = PILImage.open(BytesIO(img_bytes))
+            contents.append(pil_img)
 
     contents.append(prompt)
 
