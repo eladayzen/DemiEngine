@@ -485,12 +485,9 @@
 
     <!-- ── Pending Changes (to be built) ── -->
     <div class="ve-section">
-      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px">
-        <h2 style="margin:0">📋 Pending Requests</h2>
-        <button class="ve-small-btn primary" onclick="veShowForm()">+ New Request</button>
-      </div>
+      <h2 style="margin-bottom:12px">📋 Pending Requests</h2>
       <ul class="ve-history" id="ve-pending-list"></ul>
-      <p class="ve-note" id="ve-pending-empty">No pending requests. Click "+ New Request" to start.</p>
+      <p class="ve-note" id="ve-pending-empty">No pending requests yet.</p>
     </div>
 
     <!-- ── Build with changes ── -->
@@ -502,6 +499,11 @@
         <div id="ve-asset-preview-items" style="display:flex; gap:10px; flex-wrap:wrap; margin-top:8px"></div>
       </div>
       <button class="ve-apply-btn" onclick="onGenerate()">Build Ad with All Changes</button>
+    </div>
+
+    <!-- ── New Request Action ── -->
+    <div class="ve-section">
+      <button class="ve-apply-btn" onclick="veShowForm()" style="background:#6366f1; border-color:#6366f1">➕ New Request</button>
     </div>
 
     <!-- ── New Request Form ── -->
@@ -665,7 +667,7 @@
         <div class="ve-step-header"><span class="ve-step-num">3</span> Submit your request</div>
         <div style="display:flex; gap:10px; margin-bottom:8px">
           <button class="ve-small-btn primary" id="ve-a-improve-btn" onclick="veImprovePathA()">✨ Improve My Prompt</button>
-          <button class="ve-small-btn" id="ve-a-skip-btn" onclick="veSkipImprovePathA()">Use As-Is → Apply Now</button>
+          <button class="ve-small-btn" id="ve-a-skip-btn" onclick="veSkipImprovePathA()">Use As-Is → Groom it</button>
         </div>
         <div id="ve-a-status" class="ve-note" style="margin-top:6px"></div>
 
@@ -1133,7 +1135,7 @@ function addLevelCard(lvl) {
         '</div>' +
         '<textarea id="' + id + '_gameplay_desc" style="border-color:#336633; color:var(--text)" placeholder="e.g. Foundation is 7H. Three columns — 6S face-up with 8C behind it, 9H face-up, 10D face-up. Easy chain, no draw pile."></textarea>' +
         '<div class="apply-row">' +
-          '<button class="apply-btn" id="' + id + '_apply_btn">Apply with AI</button>' +
+          '<button class="apply-btn" id="' + id + '_apply_btn">Groom it</button>' +
           '<span class="apply-status" id="' + id + '_apply_status"></span>' +
         '</div>' +
       '</div>' +
@@ -1198,7 +1200,7 @@ function addLevelCard(lvl) {
     var levelIndex = Array.from(document.querySelectorAll('#levels-list .level-card')).indexOf(card);
 
     btn.disabled      = true;
-    btn.textContent   = 'Thinking...';
+    btn.textContent   = 'Grooming...';
     status.textContent = '';
     status.style.color = 'var(--muted)';
 
@@ -1244,7 +1246,7 @@ function addLevelCard(lvl) {
     })
     .finally(function() {
       btn.disabled    = false;
-      btn.textContent = 'Apply with AI';
+      btn.textContent = 'Groom it';
     });
   });
 
@@ -2373,6 +2375,11 @@ function veImprovePathA() {
 
 function veSkipImprovePathA() {
   var note = document.getElementById('ve-text-note').value.trim();
+  var btn = document.getElementById('ve-a-skip-btn');
+
+  // Show loading state
+  btn.disabled = true;
+  btn.textContent = 'Grooming...';
 
   // Skip improvement, use original prompt
   veImprovedPromptA = note;
@@ -2439,7 +2446,7 @@ function veApplyPathA() {
   }
 
   btn.disabled = true;
-  btn.textContent = 'Applying...';
+  btn.textContent = 'Grooming...';
   status.textContent = '';
 
   // Determine what to send
@@ -2586,6 +2593,13 @@ function veApplyPathA() {
   .finally(function() {
     btn.disabled = false;
     btn.textContent = '✨ Groom it!';
+
+    // Re-enable skip button if it was used
+    var skipBtn = document.getElementById('ve-a-skip-btn');
+    if (skipBtn) {
+      skipBtn.disabled = false;
+      skipBtn.textContent = 'Use As-Is → Groom it';
+    }
   });
 }
 
@@ -4049,8 +4063,21 @@ function veSetRequestStatus(item, status) {
 
 // Duplicate a request and open form for editing
 function veDuplicateRequest(item) {
-  // Show form
-  veShowForm();
+  // Show visual feedback
+  var allDuplicateBtns = document.querySelectorAll('button');
+  var clickedBtn = null;
+  allDuplicateBtns.forEach(function(btn) {
+    if (btn.textContent.includes('Duplicate & Edit')) {
+      btn.disabled = true;
+      btn.textContent = 'Grooming...';
+      clickedBtn = btn;
+    }
+  });
+
+  // Short delay for visual feedback
+  setTimeout(function() {
+    // Show form
+    veShowForm();
 
   // Select the category
   if (item.category) {
@@ -4089,7 +4116,16 @@ function veDuplicateRequest(item) {
     document.getElementById('ve-form').scrollIntoView({ behavior: 'smooth', block: 'start' });
   }, 400);
 
+  // Restore button state
+  setTimeout(function() {
+    if (clickedBtn) {
+      clickedBtn.disabled = false;
+      clickedBtn.textContent = '📋 Duplicate & Edit';
+    }
+  }, 500);
+
   console.log('Duplicated request - form pre-filled with:', item.category, item.level_number);
+  }, 300); // Close the initial setTimeout
 }
 
 // Show request details in popup
