@@ -3836,7 +3836,7 @@ function veDeletePendingChange(changeId) {
 }
 
 // Shared function to create a request card (used by both pending and applied)
-function veCreateRequestCard(item, showDeleteBtn) {
+function veCreateRequestCard(item, showDeleteBtn, showStatusBtns) {
   var li = document.createElement('li');
   li.style.cssText = 'flex-wrap:wrap;cursor:pointer;transition:background 0.2s';
 
@@ -3973,6 +3973,53 @@ function veCreateRequestCard(item, showDeleteBtn) {
 
   li.appendChild(contentWrap);
 
+  // Status buttons (only for applied)
+  if (showStatusBtns) {
+    var btnContainer = document.createElement('div');
+    btnContainer.style.cssText = 'display:flex;flex-direction:column;gap:6px;margin-left:12px';
+
+    // Resolved button
+    var resolvedBtn = document.createElement('button');
+    resolvedBtn.className = 've-small-btn';
+    resolvedBtn.textContent = '✓ Resolved';
+    resolvedBtn.dataset.status = 'resolved';
+    var isResolved = item.status === 'resolved';
+    resolvedBtn.style.cssText = 'font-size:12px;padding:6px 12px;white-space:nowrap;' +
+      (isResolved ? 'background:#22c55e;border-color:#22c55e;color:#fff;font-weight:600' : 'background:var(--bg);border-color:var(--border);color:var(--text)');
+    resolvedBtn.onclick = function(e) {
+      e.stopPropagation();
+      veSetRequestStatus(item, 'resolved');
+    };
+
+    // Not Resolved button
+    var notResolvedBtn = document.createElement('button');
+    notResolvedBtn.className = 've-small-btn';
+    notResolvedBtn.textContent = '✗ Not Resolved';
+    notResolvedBtn.dataset.status = 'not_resolved';
+    var isNotResolved = item.status === 'not_resolved';
+    notResolvedBtn.style.cssText = 'font-size:12px;padding:6px 12px;white-space:nowrap;' +
+      (isNotResolved ? 'background:#f97583;border-color:#f97583;color:#fff;font-weight:600' : 'background:var(--bg);border-color:var(--border);color:var(--text)');
+    notResolvedBtn.onclick = function(e) {
+      e.stopPropagation();
+      veSetRequestStatus(item, 'not_resolved');
+    };
+
+    // Duplicate & Edit button
+    var duplicateBtn = document.createElement('button');
+    duplicateBtn.className = 've-small-btn';
+    duplicateBtn.textContent = '📋 Duplicate & Edit';
+    duplicateBtn.style.cssText = 'font-size:12px;padding:6px 12px;white-space:nowrap;background:#6366f1;border-color:#6366f1;color:#fff';
+    duplicateBtn.onclick = function(e) {
+      e.stopPropagation();
+      veDuplicateRequest(item);
+    };
+
+    btnContainer.appendChild(resolvedBtn);
+    btnContainer.appendChild(notResolvedBtn);
+    btnContainer.appendChild(duplicateBtn);
+    li.appendChild(btnContainer);
+  }
+
   // Delete button (only for pending)
   if (showDeleteBtn) {
     var deleteBtn = document.createElement('button');
@@ -3987,6 +4034,62 @@ function veCreateRequestCard(item, showDeleteBtn) {
   }
 
   return li;
+}
+
+// Set request status (resolved / not_resolved)
+function veSetRequestStatus(item, status) {
+  if (item.status === status) {
+    // Clicking same status again clears it
+    item.status = null;
+  } else {
+    item.status = status;
+  }
+  veRenderApplied();
+}
+
+// Duplicate a request and open form for editing
+function veDuplicateRequest(item) {
+  // Show form
+  veShowForm();
+
+  // Select the category
+  if (item.category) {
+    veSelectCategory(item.category);
+  }
+
+  // If level_design, select the level
+  if (item.category === 'level_design' && item.level_number) {
+    setTimeout(function() {
+      var levelSelect = document.getElementById('ve-level-select');
+      if (levelSelect) {
+        levelSelect.value = item.level_number;
+        veUpdateSelectedLevel();
+      }
+    }, 100);
+  }
+
+  // Pre-fill screenshot if available
+  if (item.clean) {
+    veScreenshotB64 = item.clean;
+    setTimeout(function() {
+      veSetupPathACanvases('data:image/png;base64,' + item.clean);
+    }, 200);
+  }
+
+  // Pre-fill text note
+  setTimeout(function() {
+    var textNote = document.getElementById('ve-text-note');
+    if (textNote && item.reasoning) {
+      textNote.value = item.reasoning;
+    }
+  }, 300);
+
+  // Scroll to form
+  setTimeout(function() {
+    document.getElementById('ve-form').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, 400);
+
+  console.log('Duplicated request - form pre-filled with:', item.category, item.level_number);
 }
 
 // Show request details in popup
@@ -4035,7 +4138,7 @@ function veRenderPending() {
   empty.style.display = 'none';
 
   vePendingChanges.forEach(function(item) {
-    var card = veCreateRequestCard(item, true); // true = show delete button
+    var card = veCreateRequestCard(item, true, false); // delete=true, status=false
     list.appendChild(card);
   });
 }
@@ -4062,7 +4165,7 @@ function veRenderApplied() {
     list.className = 've-history';
     list.style.marginBottom = '16px';
     build.changes.forEach(function(item) {
-      var card = veCreateRequestCard(item, false); // false = no delete button
+      var card = veCreateRequestCard(item, false, true); // delete=false, status=true
       list.appendChild(card);
     });
     container.appendChild(list);
