@@ -1158,10 +1158,26 @@ async def visual_layout(req: VisualLayoutRequest):  # noqa: F811
         config_context = f"\n\nCURRENT {config_section.upper()} CONFIG:\n```json\n{json.dumps(current_config, indent=2)}\n```\n\nUse the apply_config_changes tool to return the updated config with your changes."
         api_params["messages"][0]["content"].append({"type": "text", "text": config_context})
 
+    # Log what we're sending to Claude
+    log.info("=" * 80)
+    log.info(f"CLAUDE REQUEST - Category: {req.category}")
+    log.info(f"Has screenshot: {req.screenshot is not None}")
+    log.info(f"Has metadata: {req.game_metadata is not None}")
+    if req.game_metadata:
+        log.info(f"Metadata: {req.game_metadata}")
+    log.info(f"User text: {req.text_note}")
+    log.info(f"System prompt preview: {system_prompt[:200]}...")
+    log.info("=" * 80)
+
     try:
         response = client.messages.create(**api_params)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Claude API error: {e}")
+
+    # Log Claude's full response
+    log.info("=" * 80)
+    log.info("CLAUDE RESPONSE:")
+    log.info(f"Model: {response.model}, Stop reason: {response.stop_reason}")
 
     # Extract text reasoning and tool result from Claude's response
     tool_result = None
@@ -1171,11 +1187,17 @@ async def visual_layout(req: VisualLayoutRequest):  # noqa: F811
     for block in response.content:
         if block.type == "text":
             reasoning_text += block.text + " "
+            log.info(f"TEXT BLOCK: {block.text}")
         elif block.type == "tool_use":
             if block.name == "generate_level_layout":
                 tool_result = block.input
+                log.info(f"TOOL USE: generate_level_layout - foundation={block.input.get('foundation_card')}, tableau={len(block.input.get('tableau', []))} cards")
             elif block.name == "apply_config_changes":
                 config_changes = block.input
+                log.info(f"TOOL USE: apply_config_changes - section={block.input.get('config_section')}")
+
+    log.info(f"Final reasoning text: {reasoning_text.strip()}")
+    log.info("=" * 80)
 
     # For non-layout categories (game_design, graphics_ui, animation), expect config changes
     if req.category in ("game_design", "graphics_ui", "animation"):

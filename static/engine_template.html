@@ -524,6 +524,12 @@ const state = {
   animating:   false,
 };
 
+// Expose game state to parent window for screenshot capture metadata
+Object.defineProperty(window, 'currentLevel', { get: () => state.levelIndex });
+Object.defineProperty(window, 'foundation', { get: () => state.foundation });
+Object.defineProperty(window, 'tableau', { get: () => state.tableau });
+Object.defineProperty(window, 'drawPile', { get: () => state.drawPile });
+
 // ============================================================
 // BUILD LEVEL
 // ============================================================

@@ -927,9 +927,12 @@
 </div>
 
 <!-- IMAGE PREVIEW MODAL (Lightbox) -->
-<div id="ve-preview-modal" style="display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.95); z-index:10001; cursor:pointer; display:flex; align-items:center; justify-content:center" onclick="veCloseImagePreview()">
+<div id="ve-preview-modal" style="display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.95); z-index:10001; cursor:pointer; align-items:center; justify-content:center" onclick="veCloseImagePreview()">
   <button onclick="veCloseImagePreview()" style="position:absolute; top:20px; right:20px; width:50px; height:50px; border:none; background:rgba(255,255,255,0.2); color:#fff; font-size:30px; cursor:pointer; border-radius:50%; transition:background 0.2s; z-index:10002" onmouseover="this.style.background='rgba(255,255,255,0.3)'" onmouseout="this.style.background='rgba(255,255,255,0.2)'">✕</button>
-  <img id="ve-preview-image" src="" style="max-width:90%; max-height:90%; object-fit:contain; pointer-events:none">
+  <div style="display:flex; flex-direction:column; align-items:center; gap:16px; max-width:90%; max-height:90%; pointer-events:none">
+    <img id="ve-preview-image" src="" style="max-width:100%; max-height:80vh; object-fit:contain">
+    <div id="ve-preview-metadata" style="display:none; background:rgba(0,0,0,0.8); color:#fff; padding:12px 20px; border-radius:8px; font-size:13px; line-height:1.6; pointer-events:auto; cursor:text"></div>
+  </div>
 </div>
 
 <!-- IMAGE NANO BANANA MODAL -->
@@ -1470,18 +1473,27 @@ function veCapturePreview() {
         var screenshotB64 = dataUrl.split(',')[1];
 
         // Capture game state metadata from iframe
+        var capturedMeta = null; // Local variable to preserve metadata
         try {
           var iframeWin = iframe.contentWindow;
-          veCapturedMetadata = {
+          console.log('DEBUG: Checking iframe window variables:', {
+            currentLevel: iframeWin.currentLevel,
+            foundation: iframeWin.foundation,
+            tableau: iframeWin.tableau,
+            drawPile: iframeWin.drawPile
+          });
+          capturedMeta = {
             level_number: iframeWin.currentLevel || 0,
             foundation_card: iframeWin.foundation || 'unknown',
             tableau_count: (iframeWin.tableau && iframeWin.tableau.length) || 0,
             draw_pile_count: (iframeWin.drawPile && iframeWin.drawPile.length) || 0,
             game_state: 'captured' // Could be enhanced with more state detection
           };
-          console.log('Captured metadata:', veCapturedMetadata);
+          veCapturedMetadata = capturedMeta; // Also store in global for Path A requests
+          console.log('Captured metadata:', capturedMeta);
         } catch (metaErr) {
           console.warn('Could not capture game metadata:', metaErr);
+          capturedMeta = null;
           veCapturedMetadata = null;
         }
 
@@ -1495,9 +1507,9 @@ function veCapturePreview() {
         veShowForm();
         veSelectCategory('level_design');
 
-        // Add captured screenshot to gallery
+        // Add captured screenshot to gallery with metadata (use local variable!)
         setTimeout(function() {
-          veAddImageToGallery(dataUrl);
+          veAddImageToGallery(dataUrl, false, capturedMeta);
         }, 100);
       } catch (innerErr) {
         alert('Capture failed: ' + innerErr.message + '\n\nUse drag & drop instead: take a screenshot and drag it into the upload area.');
@@ -2485,11 +2497,21 @@ function veApplyPathA() {
   btn.textContent = 'Grooming...';
   status.textContent = '';
 
-  // Determine what to send
+  // Determine what to send - prioritize active image from gallery
   var screenshotToSend = null;
   var hasDrawing = false;
+  var metadataToSend = veCapturedMetadata; // Default to global
 
-  if (veScreenshotB64) {
+  // If there's an active image in the gallery, use that (includes captured metadata)
+  if (veActiveImageId) {
+    var activeImg = vePathAImages.find(function(img) { return img.id === veActiveImageId; });
+    if (activeImg) {
+      screenshotToSend = activeImg.dataUrl.split(',')[1]; // Get base64 part
+      metadataToSend = activeImg.metadata || null;
+      console.log('Using active image from gallery:', { hasMetadata: !!metadataToSend });
+    }
+  } else if (veScreenshotB64) {
+    // Fallback to old Path B screenshot system
     screenshotToSend = veCompositeB64 || veScreenshotB64;
     hasDrawing = !!veCompositeB64;
   }
@@ -2505,7 +2527,7 @@ function veApplyPathA() {
     has_drawing: hasDrawing,
     text_note: promptToUse || null,
     level_index: veSelectedLevel || null,
-    game_metadata: veCapturedMetadata,
+    game_metadata: metadataToSend,
     category: veCurrentCategory || 'legacy'
   };
 
@@ -2727,15 +2749,18 @@ function veHandleImageUpload(input) {
   input.value = '';
 }
 
-function veAddImageToGallery(dataUrl, skipSave) {
+function veAddImageToGallery(dataUrl, skipSave, metadata) {
   veImageCounter++;
   var imageNum = String(veImageCounter).padStart(2, '0');
   var imageName = 'Image ' + imageNum;
 
+  console.log('DEBUG: Adding image to gallery with metadata:', metadata);
+
   vePathAImages.push({
     id: veImageCounter,
     dataUrl: dataUrl,
-    name: imageName
+    name: imageName,
+    metadata: metadata || null  // Store metadata if provided
   });
 
   // Newly added image becomes active
@@ -3031,20 +3056,62 @@ function veSaveEditedImage() {
   // Convert to data URL
   var dataUrl = mergedCanvas.toDataURL('image/png');
 
-  // Add to gallery as new image
-  veAddImageToGallery(dataUrl);
+  // Get metadata from original image (if it had any)
+  var originalImg = vePathAImages.find(function(i) { return i.id === veEditingImageId; });
+  var originalMetadata = originalImg ? originalImg.metadata : null;
+
+  // Add to gallery as new image, preserving metadata
+  veAddImageToGallery(dataUrl, false, originalMetadata);
 
   // Close modal
   veCancelEditImage();
 
-  console.log('Saved edited image as new numbered image');
+  console.log('Saved edited image as new numbered image' + (originalMetadata ? ' (with metadata)' : ''));
 }
 
 // ── IMAGE PREVIEW MODAL (Lightbox) ───────────────────────
-function veOpenImagePreview(dataUrl) {
+function veOpenImagePreview(imageOrDataUrl) {
   var modal = document.getElementById('ve-preview-modal');
   var img = document.getElementById('ve-preview-image');
+  var metaBox = document.getElementById('ve-preview-metadata');
+
+  // Handle both image object or plain dataUrl (for backwards compatibility)
+  var dataUrl = typeof imageOrDataUrl === 'string' ? imageOrDataUrl : imageOrDataUrl.dataUrl;
+  var metadata = typeof imageOrDataUrl === 'object' ? imageOrDataUrl.metadata : null;
+
   img.src = dataUrl;
+
+  // Show metadata if available
+  if (metadata) {
+    metaBox.innerHTML = '<div style="font-weight:600; margin-bottom:8px; color:#6366f1">📊 Captured Game State</div>' +
+      '<div><strong>Level:</strong> ' + (metadata.level_number + 1) + '</div>' +
+      '<div><strong>Foundation:</strong> ' + metadata.foundation_card + '</div>' +
+      '<div><strong>Tableau Cards:</strong> ' + metadata.tableau_count + '</div>' +
+      '<div><strong>Draw Pile:</strong> ' + metadata.draw_pile_count + ' cards</div>' +
+      '<div style="margin-top:8px; font-size:11px; opacity:0.7">💡 Click to copy</div>';
+    metaBox.style.display = 'block';
+    metaBox.onclick = function(e) {
+      e.stopPropagation();
+      var copyText = 'Level: ' + (metadata.level_number + 1) + '\n' +
+                     'Foundation: ' + metadata.foundation_card + '\n' +
+                     'Tableau: ' + metadata.tableau_count + ' cards\n' +
+                     'Draw Pile: ' + metadata.draw_pile_count + ' cards';
+      navigator.clipboard.writeText(copyText).then(function() {
+        metaBox.innerHTML = '<div style="color:#22c55e; font-weight:600">✓ Copied to clipboard!</div>';
+        setTimeout(function() {
+          metaBox.innerHTML = '<div style="font-weight:600; margin-bottom:8px; color:#6366f1">📊 Captured Game State</div>' +
+            '<div><strong>Level:</strong> ' + (metadata.level_number + 1) + '</div>' +
+            '<div><strong>Foundation:</strong> ' + metadata.foundation_card + '</div>' +
+            '<div><strong>Tableau Cards:</strong> ' + metadata.tableau_count + '</div>' +
+            '<div><strong>Draw Pile:</strong> ' + metadata.draw_pile_count + ' cards</div>' +
+            '<div style="margin-top:8px; font-size:11px; opacity:0.7">💡 Click to copy</div>';
+        }, 1500);
+      });
+    };
+  } else {
+    metaBox.style.display = 'none';
+  }
+
   modal.style.display = 'flex';
 }
 
@@ -3354,7 +3421,7 @@ function veCreateImageCard(img) {
     imgEl.style.cssText = 'width:100%; height:120px; object-fit:cover; border-radius:4px; display:block; pointer-events:auto; cursor:zoom-in';
     imgEl.ondblclick = function(e) {
       e.stopPropagation(); // Prevent card click
-      veOpenImagePreview(img.dataUrl);
+      veOpenImagePreview(img); // Pass full image object (includes metadata)
     };
     card.appendChild(imgEl);
 
@@ -3381,6 +3448,15 @@ function veCreateImageCard(img) {
       veNanoBananaImage(img.id);
     };
     card.appendChild(magicBtn);
+
+    // Metadata badge (top-right corner, if metadata exists)
+    if (img.metadata) {
+      var metaBadge = document.createElement('div');
+      metaBadge.textContent = '📊';
+      metaBadge.title = 'Has game state metadata - double-click to view';
+      metaBadge.style.cssText = 'position:absolute; top:32px; right:4px; width:24px; height:24px; background:rgba(99,102,241,0.9); color:#fff; font-size:12px; display:flex; align-items:center; justify-content:center; border-radius:4px; pointer-events:none';
+      card.appendChild(metaBadge);
+    }
 
     // Remove button (top-right)
     var removeBtn = document.createElement('button');
