@@ -1502,10 +1502,11 @@ function veCapturePreview() {
 // ============================================================
 
 function onGenerate() {
-  // Check for critical conflicts before building
+  // Check for critical conflicts before building (ignore paused requests)
   var conflicts = {};
   vePendingChanges.forEach(function(req) {
-    if (req.category === 'level_design' && req.level_number) {
+    // Paused requests are invisible - don't count them in conflicts
+    if (!req.paused && req.category === 'level_design' && req.level_number) {
       var key = req.level_number;
       conflicts[key] = (conflicts[key] || 0) + 1;
     }
@@ -1543,15 +1544,27 @@ function onGenerate() {
   var endpoint = '/api/generate';
   var payload = config;
 
-  // If there are pending requests, use smart build
-  if (vePendingChanges.length > 0) {
+  // Filter out paused requests (only include active requests in build)
+  var activeRequests = vePendingChanges.filter(function(req) { return !req.paused; });
+  var pausedCount = vePendingChanges.filter(function(req) { return req.paused; }).length;
+
+  console.log('=== BUILD DEBUG ===');
+  console.log('Total pending requests:', vePendingChanges.length);
+  console.log('Paused requests (excluded):', pausedCount);
+  console.log('Active requests (included):', activeRequests.length);
+  console.log('Active request details:', activeRequests.map(function(r) {
+    return { category: r.category, paused: r.paused, reasoning: r.reasoning ? r.reasoning.substring(0, 50) : 'none' };
+  }));
+
+  // If there are active pending requests, use smart build
+  if (activeRequests.length > 0) {
     endpoint = '/api/build-with-requests';
     payload = {
       mechanics: config.mechanics,
       levels: config.levels,
       visual: config.visual,
       seed: config.seed,
-      pending_requests: vePendingChanges.map(function(req) {
+      pending_requests: activeRequests.map(function(req) {
         return {
           category: req.category || 'legacy',
           level_number: req.level_number || null,
@@ -1560,7 +1573,9 @@ function onGenerate() {
         };
       })
     };
-    console.log('Using smart build with ' + vePendingChanges.length + ' pending request(s)');
+    console.log('Using smart build endpoint with', activeRequests.length, 'active requests');
+  } else {
+    console.log('No active requests - using normal build endpoint');
   }
 
   fetch(endpoint, {
@@ -1587,17 +1602,18 @@ function onGenerate() {
     document.getElementById('result-msg').textContent = resultMsg;
     resultEl.classList.add('visible');
 
-    // Move pending requests to applied changes
-    if (vePendingChanges.length > 0) {
+    // Move only active (non-paused) requests to applied changes
+    if (activeRequests.length > 0) {
       veAppliedChanges.unshift({
         run_id: data.run_id,
         run_name: data.run_id,
-        changes: vePendingChanges.slice()  // Copy the array
+        changes: activeRequests.slice()  // Copy only active requests
       });
-      vePendingChanges = [];  // Clear pending
+      // Remove only active requests from pending, keep paused ones
+      vePendingChanges = vePendingChanges.filter(function(req) { return req.paused; });
       veRenderPending();
       veRenderApplied();
-      console.log('Moved ' + veAppliedChanges[0].changes.length + ' requests to applied');
+      console.log('Moved ' + activeRequests.length + ' active requests to applied, ' + vePendingChanges.length + ' paused requests remain');
     }
 
     // Load into preview panel
@@ -1606,8 +1622,8 @@ function onGenerate() {
     iframe.src = data.play_url;
     placeholder.style.display = 'none';
 
-    // Move pending changes to applied (grouped by this build)
-    veMovePendingToApplied(data.run_id, data.run_id);
+    // Note: Pending changes already moved to Applied above (only active requests)
+    // No need to call veMovePendingToApplied() - it would incorrectly move paused requests
   })
   .catch(function(err) {
     errEl.textContent = 'Error: ' + err.message;
@@ -3851,27 +3867,39 @@ function veAddPendingChange(type, thumbCleanB64, thumbMarkedB64, note, category,
     category: category || 'legacy',
     level_number: level_number || null,
     reasoning: reasoning || note,
-    complexity: complexity || 'n/a'
+    complexity: complexity || 'n/a',
+    paused: false  // New: track if request is paused (excluded from builds)
   };
   vePendingChanges.push(change);
   veCheckConflicts();  // Check for level conflicts
   veRenderPending();
 }
 
+function vePauseRequest(item) {
+  // Toggle paused state
+  item.paused = !item.paused;
+  veCheckConflicts();  // Recalculate conflicts (paused requests are now invisible)
+  veRenderPending();
+}
+
 function veCheckConflicts() {
-  // Count how many pending requests target each level
+  // Count how many ACTIVE (non-paused) requests target each level
+  // Paused requests are invisible to the conflict system
   var levelCounts = {};
 
   vePendingChanges.forEach(function(req) {
-    if (req.category === 'level_design' && req.level_number) {
+    if (!req.paused && req.category === 'level_design' && req.level_number) {
       var key = 'level_' + req.level_number;
       levelCounts[key] = (levelCounts[key] || 0) + 1;
     }
   });
 
-  // Mark requests with conflicts
+  // Mark ACTIVE requests with conflicts (paused requests never have conflicts)
   vePendingChanges.forEach(function(req) {
-    if (req.category === 'level_design' && req.level_number) {
+    if (req.paused) {
+      // Paused requests are completely ignored - no conflicts
+      req.has_conflict = false;
+    } else if (req.category === 'level_design' && req.level_number) {
       var key = 'level_' + req.level_number;
       req.has_conflict = levelCounts[key] > 1;
     } else {
@@ -3890,7 +3918,8 @@ function veDeletePendingChange(changeId) {
 // Shared function to create a request card (used by both pending and applied)
 function veCreateRequestCard(item, showDeleteBtn, showStatusBtns) {
   var li = document.createElement('li');
-  li.style.cssText = 'flex-wrap:wrap;cursor:pointer;transition:background 0.2s';
+  li.style.cssText = 'flex-wrap:wrap;cursor:pointer;transition:background 0.2s' +
+    (item.paused ? ';opacity:0.5;filter:grayscale(0.3)' : '');
 
   // Double-click to view details
   li.ondblclick = function() {
@@ -3989,12 +4018,22 @@ function veCreateRequestCard(item, showDeleteBtn, showStatusBtns) {
   var contentWrap = document.createElement('div');
   contentWrap.style.cssText = 'flex:1;display:flex;flex-direction:column;gap:12px';
 
+  // Paused badge (if paused)
+  var pausedBadge = null;
+  if (item.paused) {
+    pausedBadge = document.createElement('span');
+    pausedBadge.className = 've-badge';
+    pausedBadge.textContent = '⏸️ PAUSED';
+    pausedBadge.style.cssText = 'background:#6b728020;color:#6b7280;border:1px solid #6b728040;font-size:11px;padding:4px 8px;margin-left:6px;font-weight:600';
+  }
+
   // Badge row
   var badgeRow = document.createElement('div');
   badgeRow.style.display = 'flex';
   badgeRow.style.alignItems = 'center';
   badgeRow.appendChild(badge);
   if (complexityBadge) badgeRow.appendChild(complexityBadge);
+  if (pausedBadge) badgeRow.appendChild(pausedBadge);
 
   // Main description (first sentence or up to 200 chars)
   var reasoning = item.reasoning || item.note || '';
@@ -4073,6 +4112,21 @@ function veCreateRequestCard(item, showDeleteBtn, showStatusBtns) {
     btnContainer.appendChild(notResolvedBtn);
     btnContainer.appendChild(duplicateBtn);
     li.appendChild(btnContainer);
+  }
+
+  // Pause button (only for pending)
+  if (showDeleteBtn) {
+    var pauseBtn = document.createElement('button');
+    pauseBtn.className = 've-small-btn';
+    pauseBtn.textContent = item.paused ? '▶️' : '⏸️';
+    pauseBtn.title = item.paused ? 'Resume (include in next build)' : 'Pause (skip in next build)';
+    pauseBtn.style.cssText = 'font-size:14px;padding:6px 12px;margin-right:6px;' +
+      (item.paused ? 'background:#22c55e20;border-color:#22c55e;color:#22c55e' : 'background:#f59e0b20;border-color:#f59e0b;color:#f59e0b');
+    pauseBtn.onclick = function(e) {
+      e.stopPropagation(); // Don't trigger double-click
+      vePauseRequest(item);
+    };
+    li.appendChild(pauseBtn);
   }
 
   // Delete button (only for pending)
