@@ -477,33 +477,34 @@
   <div class="tab-content" id="tab-visual-editor">
 
     <!-- ── Applied Changes (grouped by build) ── -->
-    <div class="ve-section">
-      <h2 style="margin-bottom:12px">✓ Applied Changes</h2>
+    <!-- 🟢 ZONE 1: Applied Changes (Archive/Review) -->
+    <div class="ve-section" style="border:2px solid #22c55e">
+      <h2 style="margin-bottom:12px; color:#22c55e">✓ Applied Changes</h2>
       <div id="ve-applied-list"></div>
       <p class="ve-note" id="ve-applied-empty">No builds yet. Pending changes will move here after a successful build.</p>
     </div>
 
-    <!-- ── Pending Changes (to be built) ── -->
-    <div class="ve-section">
-      <h2 style="margin-bottom:12px">📋 Pending Requests</h2>
+    <!-- 🟠 ZONE 2: Pending Requests (Active Workflow) -->
+    <div class="ve-section" style="border:2px solid #f59e0b">
+      <h2 style="margin-bottom:12px; color:#f59e0b">📋 Pending Requests</h2>
       <ul class="ve-history" id="ve-pending-list"></ul>
       <p class="ve-note" id="ve-pending-empty">No pending requests yet.</p>
     </div>
 
-    <!-- ── Build with changes ── -->
-    <div class="ve-section">
-      <h2>Build</h2>
+    <!-- 🟠 ZONE 2: Build (Active Workflow) -->
+    <div class="ve-section" style="border:2px solid #f59e0b">
+      <h2 style="color:#f59e0b">Build</h2>
       <p class="ve-note" style="margin-bottom:10px">Applied changes are automatically included when you click Generate Ad (footer button), or use the button below.</p>
       <div id="ve-asset-preview" style="margin-bottom:12px; display:none">
         <div class="ve-label">Stored image assets (will be embedded in next build):</div>
         <div id="ve-asset-preview-items" style="display:flex; gap:10px; flex-wrap:wrap; margin-top:8px"></div>
       </div>
-      <button class="ve-apply-btn" onclick="onGenerate()">Build Ad with All Changes</button>
+      <button class="ve-apply-btn" onclick="onGenerate()" style="background:#f59e0b; border-color:#f59e0b; color:#fff">Build with All Pending Changes</button>
     </div>
 
-    <!-- ── New Request Action ── -->
-    <div class="ve-section">
-      <button class="ve-apply-btn" onclick="veShowForm()" style="background:#6366f1; border-color:#6366f1">➕ New Request</button>
+    <!-- 🔵 ZONE 3: New Request (Creation) -->
+    <div class="ve-section" style="border:2px solid #6366f1">
+      <button class="ve-apply-btn" onclick="veShowForm()" style="background:#6366f1; border-color:#6366f1; color:#fff">➕ New Request</button>
     </div>
 
     <!-- ── New Request Form ── -->

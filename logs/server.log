@@ -1372,3 +1372,17 @@ levels.1.enter_animation
 2026-02-22 10:24:18  INFO     visual/layout OK — category=graphics_ui, no layout (text-only response)
 2026-02-22 10:25:32  INFO     Listed 8 reference images
 2026-02-22 10:25:35  INFO     assets/list — returning 3 slots
+2026-02-22 10:25:45  INFO     POST /api/generate — validating configs
+2026-02-22 10:25:45  INFO     Embedded project assets into build: {'background': 'background.png', 'card_back': 'card_back.png', 'felt': 'felt.png'}
+2026-02-22 10:25:45  INFO     Build complete → build_20260222_102545  (bg_image=False, card_back_image=False, felt_image=False)
+2026-02-22 10:25:53  INFO     Cleared all reference images (8 files)
+2026-02-22 10:33:03  INFO     Listed 0 reference images
+2026-02-22 10:33:06  INFO     assets/list — returning 3 slots
+2026-02-22 10:37:14  INFO     Listed 0 reference images
+2026-02-22 10:37:16  INFO     assets/list — returning 3 slots
+2026-02-22 10:37:35  INFO     POST /api/generate — validating configs
+2026-02-22 10:37:35  INFO     Embedded project assets into build: {'background': 'background.png', 'card_back': 'card_back.png', 'felt': 'felt.png'}
+2026-02-22 10:37:35  INFO     Build complete → build_20260222_103735  (bg_image=False, card_back_image=False, felt_image=False)
+2026-02-22 10:37:38  INFO     POST /api/visual/layout — category=graphics_ui, level=None, has_drawing=False, annotations=False, nanobanana_ref=False, ref_images=0, note='try making everything more cute'
+2026-02-22 10:37:51  INFO     HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2026-02-22 10:37:51  INFO     visual/layout OK — category=graphics_ui, no layout (text-only response)
