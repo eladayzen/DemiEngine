@@ -99,6 +99,9 @@ class VisualConfig(BaseModel):
     primary_text_color: str = "#ffffff"
     font_family:        str = "Arial, sans-serif"
     ui_theme:           Literal["dark", "classic", "minimal"] = "dark"
+    # Card dimensions (defaults match engine hardcoded values)
+    card_width:         Optional[int] = None  # Default 70 if not specified
+    card_height:        Optional[int] = None  # Default 96 if not specified
     # Image assets — base64-encoded PNG/JPG strings. null = use code-drawn fallback.
     background_image:   Optional[str] = None
     card_back_image:    Optional[str] = None

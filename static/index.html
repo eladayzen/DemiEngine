@@ -2536,52 +2536,9 @@ function veApplyPathA() {
   })
   .then(function(r) { return r.ok ? r.json() : r.json().then(function(e) { throw new Error(e.detail || 'Server error'); }); })
   .then(function(data) {
-    // Apply layout to form fields (only for level_design and legacy categories)
-    if (data.layout) {
-      var levelCards = document.querySelectorAll('.level-card');
-      if (levelCards.length > 0) {
-        var card   = levelCards[0];
-        var cardId = card.dataset.levelId;
-        var layout = data.layout;
-        var fc  = document.getElementById(cardId + '_foundation_card');
-        var tab = document.getElementById(cardId + '_tableau');
-        var dp  = document.getElementById(cardId + '_draw_pile');
-        var cw  = document.getElementById(cardId + '_cell_width');
-        var ch  = document.getElementById(cardId + '_cell_height');
-        if (fc)  fc.value  = layout.foundation_card;
-        if (tab) tab.value = JSON.stringify(layout.tableau, null, 2);
-        if (dp)  dp.value  = (layout.draw_pile || []).join(', ');
-        if (cw)  cw.value  = layout.grid.cell_width;
-        if (ch)  ch.value  = layout.grid.cell_height;
-        var badge = card.querySelector('.tableau-badge');
-        if (badge) badge.textContent = (layout.tableau || []).length + ' cards';
-        veLog('Path A applied to level card "' + cardId + '": foundation=' + layout.foundation_card + ', ' + (layout.tableau||[]).length + ' tableau cards');
-      } else {
-        veLog('Warning: no level cards found in form — switch to Levels tab and add a level first');
-      }
-    } else if (data.config_changes) {
-      // Apply config changes to form fields (game_design, graphics_ui, animation)
-      var section = data.config_changes.section;
-      var config = data.config_changes.updated_config;
-      var summary = data.config_changes.summary;
-
-      if (section === 'visual') {
-        var visualTextarea = document.getElementById('visual_config');
-        if (visualTextarea) {
-          visualTextarea.value = JSON.stringify(config, null, 2);
-          veLog('Applied visual config changes: ' + summary);
-        }
-      } else if (section === 'mechanics') {
-        var mechanicsTextarea = document.getElementById('mechanics_config');
-        if (mechanicsTextarea) {
-          mechanicsTextarea.value = JSON.stringify(config, null, 2);
-          veLog('Applied mechanics config changes: ' + summary);
-        }
-      }
-    } else {
-      // Non-layout category (Game Design, Graphics & UI, Animation) - no form fields to update
-      veLog('Received reasoning for ' + (data.category || 'unknown') + ' category - no layout changes');
-    }
+    // NOTE: Don't apply changes to form fields yet - only apply when user approves and builds
+    // This allows user to review and cancel before committing changes
+    veLog('Received ' + (data.category || 'unknown') + ' response - review in reasoning panel, approve to add to pending');
 
     // Store data for approval
     window.vePathAApprovalData = {
@@ -2719,6 +2676,10 @@ function veApprovePathA() {
   );
 
   veLog('Path A approved and added to pending requests');
+
+  // Clear active image so next request starts fresh
+  veActiveImageId = null;
+  veRenderImageGallery(); // Re-render to remove active highlight
 
   // Show success message
   var status = document.getElementById('ve-a-status');

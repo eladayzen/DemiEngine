@@ -36,8 +36,9 @@ const CONFIG = __GAME_CONFIG__;
 // ============================================================
 const STAGE_W = 390;
 const STAGE_H = 844;
-const CARD_W  = 70;
-const CARD_H  = 96;
+// Card dimensions - can be overridden by visual config
+const CARD_W  = CONFIG.visual.card_width || 70;
+const CARD_H  = CONFIG.visual.card_height || 96;
 const VALS    = ['A','2','3','4','5','6','7','8','9','10','J','Q','K'];
 const SUITS   = { H: '\u2665', D: '\u2666', C: '\u2663', S: '\u2660' };
 const SPEEDS  = { slow: 600, medium: 350, fast: 180 };

@@ -934,6 +934,7 @@ GRAPHICS_UI_SYSTEM = """You are a UI/UX designer for a mobile card game playable
 VISUAL CONFIG STRUCTURE:
 - Colors: background_color, card_back_color, table_felt_color, card_border_color, foundation_border_color
 - Text: font_family, font_color, title_font_size
+- Card dimensions: card_width (default 70), card_height (default 96) - change these to resize all cards globally
 - Card styling: card_border_width, card_corner_radius, card_shadow (with enabled, offset_x, offset_y, blur_radius, color, spread)
 - Images: background_image, card_back_image, felt_image (base64 PNG data)
 - Suit icons: suit_spade_image, suit_heart_image, suit_diamond_image, suit_club_image (base64 PNG data)
