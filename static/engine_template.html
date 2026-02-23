@@ -41,7 +41,11 @@ const CARD_W  = CONFIG.visual.card_width || 70;
 const CARD_H  = CONFIG.visual.card_height || 96;
 const VALS    = ['A','2','3','4','5','6','7','8','9','10','J','Q','K'];
 const SUITS   = { H: '\u2665', D: '\u2666', C: '\u2663', S: '\u2660' };
-const SPEEDS  = { slow: 600, medium: 350, fast: 180 };
+const SPEEDS  = {
+  slow:   CONFIG.visual.card_move_speed_slow || 600,
+  medium: CONFIG.visual.card_move_speed_medium || 350,
+  fast:   CONFIG.visual.card_move_speed_fast || 180
+};
 const CONFETTI_COLORS = [0xffe066, 0xff6b6b, 0x6bffb8, 0x6bb8ff, 0xff6bff, 0xffffff];
 
 // ============================================================
@@ -249,18 +253,19 @@ const PIP_X0 = 10, PIP_W = 50, PIP_Y0 = 22, PIP_H = 52;
 function createSuitElement(suit, size = 12) {
   const texture = _suitTextures[suit];
   if (texture) {
-    // Use SVG sprite
+    // Use PNG sprite
     const sprite = new PIXI.Sprite(texture);
     sprite.width = size;
     sprite.height = size;
     sprite.anchor.set(0, 0);
     return sprite;
   } else {
-    // Fallback to text symbol
-    const color = (suit === 'H' || suit === 'D') ? 0xcc2222 : 0x111111;
+    // Fallback to text symbol - use configurable colors
+    const isRed = (suit === 'H' || suit === 'D');
+    const color = hex(isRed ? CONFIG.visual.card_red_color : CONFIG.visual.card_black_color);
     const text = new PIXI.Text(SUITS[suit], {
-      fontFamily: 'Arial',
-      fontWeight: 'bold',
+      fontFamily: CONFIG.visual.card_font_family || 'Arial',
+      fontWeight: CONFIG.visual.card_font_weight || 'bold',
       fontSize: size,
       fill: color
     });
@@ -269,15 +274,23 @@ function createSuitElement(suit, size = 12) {
 }
 
 function addFaceTexts(container, info) {
-  const color = info.isRed ? 0xcc2222 : 0x111111;
-  const base  = { fontFamily: 'Arial', fontWeight: 'bold', fill: color };
+  // Use configurable colors and fonts from CONFIG
+  const color = hex(info.isRed ? CONFIG.visual.card_red_color : CONFIG.visual.card_black_color);
+  const base  = {
+    fontFamily: CONFIG.visual.card_font_family || 'Arial',
+    fontWeight: CONFIG.visual.card_font_weight || 'bold',
+    fill: color
+  };
+
+  const cornerSize = CONFIG.visual.card_corner_font_size || 11;
+  const faceSize = CONFIG.visual.card_face_font_size || 28;
 
   // Top-left corner: value + suit icon
-  const tlValue = new PIXI.Text(info.value, { ...base, fontSize: 11 });
+  const tlValue = new PIXI.Text(info.value, { ...base, fontSize: cornerSize });
   tlValue.x = 4; tlValue.y = 3;
   container.addChild(tlValue);
 
-  const tlSuit = createSuitElement(info.suit, 11);
+  const tlSuit = createSuitElement(info.suit, cornerSize);
   tlSuit.x = 4; tlSuit.y = 16;
   container.addChild(tlSuit);
 
@@ -285,11 +298,11 @@ function addFaceTexts(container, info) {
   const brCont = new PIXI.Container();
   brCont.x = CARD_W; brCont.y = CARD_H; brCont.rotation = Math.PI;
 
-  const brValue = new PIXI.Text(info.value, { ...base, fontSize: 11 });
+  const brValue = new PIXI.Text(info.value, { ...base, fontSize: cornerSize });
   brValue.x = 4; brValue.y = 3;
   brCont.addChild(brValue);
 
-  const brSuit = createSuitElement(info.suit, 11);
+  const brSuit = createSuitElement(info.suit, cornerSize);
   brSuit.x = 4; brSuit.y = 16;
   brCont.addChild(brSuit);
 
@@ -307,7 +320,7 @@ function addFaceTexts(container, info) {
       container.addChild(pip);
     }
   } else {
-    const ltr = new PIXI.Text(info.value, { ...base, fontSize: 28 });
+    const ltr = new PIXI.Text(info.value, { ...base, fontSize: faceSize });
     ltr.anchor.set(0.5); ltr.x = CARD_W / 2; ltr.y = CARD_H / 2;
     container.addChild(ltr);
   }
@@ -324,9 +337,11 @@ function makeCardSprite(code, faceUp) {
 
   if (faceUp) {
     const info = parseCard(code);
+    const borderWidth = V.card_border_width || 1.5;
+    const cornerRadius = V.card_corner_radius || 6;
     g.beginFill(hex(V.card_face_color));
-    g.lineStyle(1.5, hex(V.card_border_color));
-    g.drawRoundedRect(0, 0, CARD_W, CARD_H, 6);
+    g.lineStyle(borderWidth, hex(V.card_border_color));
+    g.drawRoundedRect(0, 0, CARD_W, CARD_H, cornerRadius);
     g.endFill();
     addFaceTexts(c, info);
   } else {
@@ -338,9 +353,11 @@ function makeCardSprite(code, faceUp) {
       c.addChild(s);
     } else {
       // Code-drawn fallback
+      const borderWidth = V.card_border_width || 1.5;
+      const cornerRadius = V.card_corner_radius || 6;
       g.beginFill(hex(V.card_back_color));
-      g.lineStyle(1.5, hex(V.card_border_color));
-      g.drawRoundedRect(0, 0, CARD_W, CARD_H, 6);
+      g.lineStyle(borderWidth, hex(V.card_border_color));
+      g.drawRoundedRect(0, 0, CARD_W, CARD_H, cornerRadius);
       g.endFill();
       if (V.card_back_pattern === 'stripes') {
         g.lineStyle(1, 0xffffff, 0.15);

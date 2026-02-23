@@ -99,9 +99,28 @@ class VisualConfig(BaseModel):
     primary_text_color: str = "#ffffff"
     font_family:        str = "Arial, sans-serif"
     ui_theme:           Literal["dark", "classic", "minimal"] = "dark"
+
     # Card dimensions (defaults match engine hardcoded values)
     card_width:         Optional[int] = None  # Default 70 if not specified
     card_height:        Optional[int] = None  # Default 96 if not specified
+
+    # Card styling (Phase 1)
+    card_red_color:     str = "#cc2222"  # Color for red suits (♥♦) text/pips
+    card_black_color:   str = "#111111"  # Color for black suits (♣♠) text/pips
+    card_border_width:  float = 1.5      # Card border thickness in pixels
+    card_corner_radius: int = 6          # Card corner roundness in pixels
+
+    # Typography (Phase 1)
+    card_font_family:      str = "Arial"     # Font for card text
+    card_font_weight:      str = "bold"      # Font weight for card text
+    card_corner_font_size: int = 11          # Font size for corner value/suit
+    card_face_font_size:   int = 28          # Font size for face card letter (J/Q/K)
+
+    # Animation speeds (Phase 1) - milliseconds
+    card_move_speed_slow:   int = 600   # Slow animation timing
+    card_move_speed_medium: int = 350   # Medium animation timing (default)
+    card_move_speed_fast:   int = 180   # Fast animation timing
+
     # Image assets — base64-encoded PNG/JPG strings. null = use code-drawn fallback.
     background_image:   Optional[str] = None
     card_back_image:    Optional[str] = None
