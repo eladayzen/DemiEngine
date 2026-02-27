@@ -1,3 +1,12 @@
+cd C:\Tests\PlayablePrtoto
+py -m uvicorn app:app --port 8000
+py -m uvicorn app:app --port 8000 --reload
+
+http://localhost:8000/
+
+py -3 C:\Users\USER\voice_to_claude.py
+
+
   What you have right now:
   - A locally-running tool that lets you configure solitaire playable ads                                                                                                            - A working PixiJS engine with 2-level default config, enter animations, win/fail flow
   - A full config UI with dropdowns, color pickers, toggles

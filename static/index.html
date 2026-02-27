@@ -1641,14 +1641,17 @@ function onGenerate() {
       console.log('Moved ' + activeRequests.length + ' active requests to applied, ' + vePendingChanges.length + ' paused requests remain');
     }
 
+    // Update form fields with the configs Claude returned so the next build starts from here
+    if (data.updated_configs) {
+      populateFromDefaults(data.updated_configs);
+      console.log('Form fields updated with Smart Build configs');
+    }
+
     // Load into preview panel
     var iframe = document.getElementById('preview-iframe');
     var placeholder = document.getElementById('preview-placeholder');
     iframe.src = data.play_url;
     placeholder.style.display = 'none';
-
-    // Note: Pending changes already moved to Applied above (only active requests)
-    // No need to call veMovePendingToApplied() - it would incorrectly move paused requests
   })
   .catch(function(err) {
     errEl.textContent = 'Error: ' + err.message;

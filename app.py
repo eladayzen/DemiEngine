@@ -419,7 +419,12 @@ Apply all these changes and return the updated configurations using the update_g
         "status": "ready",
         "play_url": f"/runs/{run_id}/play",
         "changes_summary": changes_summary,
-        "skipped_requests": skipped
+        "skipped_requests": skipped,
+        "updated_configs": {
+            "mechanics": updated_mechanics.dict(),
+            "levels": updated_levels.dict(),
+            "visual": updated_visual.dict()
+        }
     }
 
 
